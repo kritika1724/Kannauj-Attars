@@ -1,0 +1,61 @@
+const mongoose = require('mongoose')
+
+const orderItemSchema = new mongoose.Schema(
+  {
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    name: { type: String, required: true },
+    qty: { type: Number, required: true, min: 1 },
+    price: { type: Number, required: true },
+    image: { type: String, default: '' },
+    pack: {
+      label: { type: String, default: '' },
+    },
+  },
+  { _id: false }
+)
+
+const orderSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    orderItems: { type: [orderItemSchema], required: true, default: [] },
+    shippingAddress: {
+      fullName: { type: String, required: true },
+      phone: { type: String, required: true },
+      addressLine1: { type: String, required: true },
+      addressLine2: { type: String, default: '' },
+      city: { type: String, required: true },
+      state: { type: String, required: true },
+      postalCode: { type: String, required: true },
+      country: { type: String, required: true, default: 'India' },
+    },
+    paymentMethod: { type: String, required: true, default: 'COD' },
+    itemsPrice: { type: Number, required: true },
+    shippingPrice: { type: Number, required: true, default: 0 },
+    taxPrice: { type: Number, required: true, default: 0 },
+    totalPrice: { type: Number, required: true },
+    isPaid: { type: Boolean, required: true, default: false },
+    paidAt: { type: Date },
+    isDelivered: { type: Boolean, required: true, default: false },
+    deliveredAt: { type: Date },
+    status: {
+      type: String,
+      enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
+      default: 'pending',
+    },
+    cancelledAt: { type: Date },
+    paymentResult: {
+      provider: { type: String, default: '' }, // e.g. "razorpay"
+      id: { type: String },
+      status: { type: String },
+      email: { type: String },
+      razorpayOrderId: { type: String },
+      razorpayPaymentId: { type: String },
+      razorpaySignature: { type: String },
+      amount: { type: Number },
+      currency: { type: String },
+    },
+  },
+  { timestamps: true }
+)
+
+module.exports = mongoose.model('Order', orderSchema)

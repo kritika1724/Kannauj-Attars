@@ -1,0 +1,44 @@
+const jwt = require('jsonwebtoken')
+const User = require('../models/User')
+const { isAdminEmail } = require('../config/admin')
+
+const protect = async (req, res, next) => {
+  try {
+    const auth = req.headers.authorization
+    if (!auth || !auth.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Not authorized' })
+    }
+
+    const token = auth.split(' ')[1]
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    // Block refresh tokens from being used as access tokens.
+    if (decoded?.typ && decoded.typ !== 'access') {
+      return res.status(401).json({ message: 'Token invalid' })
+    }
+    const user = await User.findById(decoded.id).select('-password')
+
+    if (!user) {
+      return res.status(401).json({ message: 'Not authorized' })
+    }
+
+    // Never trust DB flags for admin. Derive admin strictly from env-based email.
+    user.isAdmin = isAdminEmail(user.email)
+    user.role = user.isAdmin ? 'admin' : 'user'
+
+    req.user = user
+    next()
+  } catch (error) {
+    return res.status(401).json({ message: 'Token invalid' })
+  }
+}
+
+const isAdmin = (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: 'Not authorized' })
+  if (isAdminEmail(req.user.email)) return next()
+  return res.status(403).json({ message: 'Admin only access' })
+}
+
+// Backward-compatible alias (existing routes import adminOnly).
+const adminOnly = isAdmin
+
+module.exports = { protect, isAdmin, adminOnly }

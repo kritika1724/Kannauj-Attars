@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+@config "../tailwind.config.js";
+@import "tailwindcss";
+
+/* Tailwind v4 theme tokens (more reliable than tailwind.config.js in some setups) */
+@theme {
+  /* Heritage Royal */
+  --color-ink: #111b3a;        /* deep indigo */
+  --color-muted: #6e6e6e;      /* warm gray */
+  --color-sand: #ffffff;       /* clean white base */
+  --color-clay: #f6f7fb;       /* subtle blue-white panel */
+  --color-ember: #111b3a;      /* primary CTA */
+  --color-emberDark: #0b122b;  /* hover */
+  --color-midnight: #070b18;   /* deep footer */
+  --color-ruby: #5a3a1e;       /* attar brown */
+  --color-gold: #c9a24a;       /* antique gold */
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Manrope', system-ui, sans-serif;
+    color: var(--color-ink);
+    background:
+      radial-gradient(circle at 12% 10%, rgba(201, 162, 74, 0.20) 0%, rgba(201, 162, 74, 0) 40%),
+      radial-gradient(circle at 88% 16%, rgba(17, 27, 58, 0.10) 0%, rgba(17, 27, 58, 0) 42%),
+      linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+  }
+}
+
+@layer components {
+  /* Layout */
+  .ka-container {
+    @apply mx-auto w-full max-w-6xl px-6;
+  }
+
+  /* Type */
+  .ka-kicker {
+    @apply text-xs uppercase tracking-[0.35em] text-muted;
+  }
+  .ka-h1 {
+    @apply font-display text-4xl leading-tight text-ink md:text-5xl;
+  }
+  .ka-h2 {
+    @apply font-display text-3xl leading-tight text-ink md:text-4xl;
+  }
+  .ka-lead {
+    @apply text-lg text-muted;
+  }
+
+  /* Surfaces */
+  .ka-card {
+    @apply rounded-3xl border border-slate-200/80 bg-white shadow-lg shadow-black/10;
+  }
+  .ka-panel {
+    @apply rounded-3xl border border-slate-200/80 bg-clay/70 shadow-sm;
+  }
+  .ka-divider {
+    @apply h-px w-full;
+    background: linear-gradient(90deg, rgba(201, 162, 74, 0.55), rgba(201, 162, 74, 0));
+  }
+
+  /* Buttons */
+  .ka-btn {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition;
+    @apply focus:outline-none focus:ring-2 focus:ring-ember/20 focus:ring-offset-2 focus:ring-offset-white;
+  }
+  .ka-btn-primary {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition;
+    @apply bg-ember text-white shadow-lg shadow-ember/25 hover:bg-emberDark;
+    @apply focus:outline-none focus:ring-2 focus:ring-ember/20 focus:ring-offset-2 focus:ring-offset-white;
+  }
+  .ka-btn-outline {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition;
+    @apply border border-gold/25 bg-white text-ink hover:-translate-y-0.5 hover:shadow-md;
+    @apply focus:outline-none focus:ring-2 focus:ring-ember/20 focus:ring-offset-2 focus:ring-offset-white;
+  }
+  .ka-btn-ghost {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition;
+    @apply border border-slate-200 bg-white text-emberDark hover:border-gold/40;
+    @apply focus:outline-none focus:ring-2 focus:ring-ember/20 focus:ring-offset-2 focus:ring-offset-white;
+  }
+  .ka-btn-darkOutline {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition;
+    @apply border border-white/25 bg-white/5 text-white/90 hover:bg-white/10;
+    @apply focus:ring-white/20 focus:ring-offset-transparent;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  /* Badges */
+  .ka-badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold;
+  }
+  .ka-badge-solid {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold bg-ember text-white;
+  }
+  .ka-badge-outline {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold border border-slate-200 bg-white text-emberDark;
+  }
+  .ka-badge-new {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold bg-red-600 text-white;
+  }
+
+  /* Image framing */
+  .ka-frame {
+    @apply overflow-hidden rounded-2xl border border-slate-200 bg-white;
+    box-shadow: 0 24px 60px rgba(17, 27, 58, 0.10);
+  }
+  .ka-mediaBg {
+    background: linear-gradient(135deg, rgba(201, 162, 74, 0.18), rgba(255, 255, 255, 0.92), rgba(17, 27, 58, 0.08));
+  }
+}
