@@ -1,0 +1,12 @@
+{
+  "name": "kannauj-attars",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build:render": "cd frontend && npm ci --include=dev && npm run build && cd ../backend && npm ci",
+    "start": "cd backend && npm start"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
