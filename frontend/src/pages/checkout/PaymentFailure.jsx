@@ -2,14 +2,26 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, auth } from '../../services/api'
 import { openRazorpayCheckout } from '../../utils/razorpay'
+import { getLastOrderById, saveLastOrder } from '../../utils/orderStorage'
 
 function PaymentFailure() {
   const { id } = useParams()
-  const [order, setOrder] = useState(null)
+  const [order, setOrder] = useState(() => getLastOrderById(id))
   const [message, setMessage] = useState('Payment was not completed.')
   const user = auth.getUser()
 
   useEffect(() => {
+    const localOrder = getLastOrderById(id)
+    if (localOrder) {
+      setOrder(localOrder)
+      return
+    }
+
+    if (!user) {
+      setMessage('Payment was not completed. You can retry from this page.')
+      return
+    }
+
     ;(async () => {
       try {
         const data = await api.getOrder(id)
@@ -33,12 +45,13 @@ function PaymentFailure() {
         description: `Order ${order._id}`,
         prefill: {
           name: order?.shippingAddress?.fullName || user?.name || '',
-          email: user?.email || '',
+          email: order?.shippingAddress?.email || user?.email || '',
           contact: order?.shippingAddress?.phone || '',
         },
         themeColor: '#111B3A',
         onSuccess: async (response) => {
-          await api.verifyRazorpayPayment({ orderId: order._id, ...response })
+          const updated = await api.verifyRazorpayPayment({ orderId: order._id, ...response })
+          saveLastOrder(updated)
           window.location.href = `/checkout/success/${order._id}`
         },
         onDismiss: () => {
@@ -70,12 +83,14 @@ function PaymentFailure() {
           >
             Retry payment
           </button>
-          <Link
-            to={`/order/${id}`}
-            className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-emberDark hover:border-gold/40"
-          >
-            View order
-          </Link>
+          {user ? (
+            <Link
+              to={`/order/${id}`}
+              className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-emberDark hover:border-gold/40"
+            >
+              View order
+            </Link>
+          ) : null}
           <Link
             to="/products"
             className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-emberDark hover:border-gold/40"
@@ -89,4 +104,3 @@ function PaymentFailure() {
 }
 
 export default PaymentFailure
-

@@ -3,6 +3,7 @@ import { saveCartForUser } from '../utils/cartStorage'
 
 export const DEFAULT_SHIPPING = {
   fullName: '',
+  email: '',
   phone: '',
   addressLine1: '',
   addressLine2: '',
@@ -13,14 +14,13 @@ export const DEFAULT_SHIPPING = {
 }
 
 export const DEFAULT_CART_STATE = {
-  ownerId: null,
+  ownerId: 'guest',
   items: [],
   shippingAddress: DEFAULT_SHIPPING,
   paymentMethod: 'COD',
 }
 
 const saveCart = (state) => {
-  if (!state.ownerId) return
   saveCartForUser(state.ownerId, {
     items: state.items,
     shippingAddress: state.shippingAddress,
@@ -36,7 +36,7 @@ const cartSlice = createSlice({
   reducers: {
     hydrateCart(state, action) {
       const { ownerId, items, shippingAddress, paymentMethod } = action.payload || {}
-      state.ownerId = ownerId || null
+      state.ownerId = ownerId || 'guest'
       state.items = Array.isArray(items) ? items : []
       state.shippingAddress = { ...DEFAULT_SHIPPING, ...(shippingAddress || {}) }
       state.paymentMethod = paymentMethod || 'COD'

@@ -369,18 +369,6 @@ function Products() {
               qty,
             }
 
-            // Guest: store intent and ask to login/register.
-            if (!auth.getUser()) {
-              try {
-                sessionStorage.setItem('pendingAddToCart', JSON.stringify(item))
-              } catch {
-                // ignore
-              }
-              setCartModal({ open: false, product: null })
-              navigate('/account', { state: { intent: 'cart' } })
-              return
-            }
-
             dispatch(addToCart(item))
             setCartModal({ open: false, product: null })
             navigate('/cart')

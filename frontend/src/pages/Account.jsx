@@ -10,16 +10,9 @@ const loginSchema = yup.object({
   password: yup.string().required('Password is required.'),
 })
 
-const registerSchema = yup.object({
-  name: yup.string().required('Name is required.'),
-  email: yup.string().email('Enter a valid email.').required('Email is required.'),
-  password: yup.string().min(6, 'Minimum 6 characters.').required('Password is required.'),
-})
-
 function Account() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [mode, setMode] = useState('login')
   const [message, setMessage] = useState('')
   const [user, setUser] = useState(auth.getUser())
 
@@ -41,10 +34,10 @@ function Account() {
 
   useEffect(() => {
     if (location?.state?.intent === 'cart' && !user) {
-      setMessage('Please sign in or create an account to add items to your cart.')
+      setMessage('Please sign in to add items to your cart.')
     }
     if (location?.state?.intent === 'wishlist' && !user) {
-      setMessage('Please sign in or create an account to save items to your wishlist.')
+      setMessage('Please sign in to save items to your wishlist.')
     }
   }, [location?.state?.intent, user])
 
@@ -60,12 +53,6 @@ function Account() {
     formState: { errors: loginErrors },
   } = useForm({ resolver: yupResolver(loginSchema) })
 
-  const {
-    register: registerRegister,
-    handleSubmit: handleRegister,
-    formState: { errors: registerErrors },
-  } = useForm({ resolver: yupResolver(registerSchema) })
-
   const submitLogin = async (data) => {
     try {
       // IMPORTANT: read intent BEFORE auth.setSession(), because CartBootstrap
@@ -76,26 +63,6 @@ function Account() {
       auth.setSession(response)
       setUser(response.user)
       setMessage('Logged in successfully.')
-      if (hadPendingCart) {
-        navigate('/cart')
-      } else if (hadPendingWishlist) {
-        navigate('/wishlist')
-      } else {
-        navigate(response.user?.isAdmin === true ? '/admin' : '/account/orders')
-      }
-    } catch (error) {
-      setMessage(error.message)
-    }
-  }
-
-  const submitRegister = async (data) => {
-    try {
-      const hadPendingCart = hadPendingCartIntent()
-      const hadPendingWishlist = hadPendingWishlistIntent()
-      const response = await api.register(data)
-      auth.setSession(response)
-      setUser(response.user)
-      setMessage('Account created successfully.')
       if (hadPendingCart) {
         navigate('/cart')
       } else if (hadPendingWishlist) {
@@ -125,12 +92,12 @@ function Account() {
         <div className="mx-auto w-full max-w-5xl">
           <p className="text-xs uppercase tracking-[0.35em] text-muted">Account</p>
           <h1 className="mt-4 font-display text-4xl text-ink md:text-5xl">
-            {user ? 'Welcome back' : 'Sign in or create an account'}
+            {user ? 'Welcome back' : 'Login to your account'}
           </h1>
           <p className="mt-4 text-lg text-muted">
             {user
               ? `Hello, ${user.name}.`
-              : 'Log in to leave reviews and track your orders.'}
+              : 'Log in to leave reviews and track your orders. New account registration is currently closed.'}
           </p>
         </div>
       </header>
@@ -189,149 +156,58 @@ function Account() {
               </div>
             ) : (
               <>
-                <div className="flex gap-4">
+                <form onSubmit={handleLogin(submitLogin)} className="mt-2 space-y-5">
+                  <div>
+                    <label className="text-sm font-semibold text-ink">Email</label>
+                    <input
+                      {...registerLogin('email')}
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                      placeholder="you@email.com"
+                    />
+                    {loginErrors.email && (
+                      <p className="mt-2 text-xs text-red-600">{loginErrors.email.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold text-ink">Password</label>
+                    <input
+                      {...registerLogin('password')}
+                      type="password"
+                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                      placeholder="••••••••"
+                    />
+                    {loginErrors.password && (
+                      <p className="mt-2 text-xs text-red-600">{loginErrors.password.message}</p>
+                    )}
+                  </div>
                   <button
-                    type="button"
-                    onClick={() => setMode('login')}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                      mode === 'login'
-                        ? 'bg-ember text-white'
-                        : 'bg-white text-ink border border-slate-200'
-                    }`}
+                    type="submit"
+                    className="rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white"
                   >
                     Login
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode('register')}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                      mode === 'register'
-                        ? 'bg-ember text-white'
-                        : 'bg-white text-ink border border-slate-200'
-                    }`}
-                  >
-                    Register
-                  </button>
-                </div>
-
-                {mode === 'login' ? (
-                  <form onSubmit={handleLogin(submitLogin)} className="mt-6 space-y-5">
-                    <div>
-                      <label className="text-sm font-semibold text-ink">Email</label>
-                      <input
-                        {...registerLogin('email')}
-                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
-                        placeholder="you@email.com"
-                      />
-                      {loginErrors.email && (
-                        <p className="mt-2 text-xs text-red-600">{loginErrors.email.message}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-ink">Password</label>
-                      <input
-                        {...registerLogin('password')}
-                        type="password"
-                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
-                        placeholder="••••••••"
-                      />
-                      {loginErrors.password && (
-                        <p className="mt-2 text-xs text-red-600">{loginErrors.password.message}</p>
-                      )}
-                    </div>
-                    <button
-                      type="submit"
-                      className="rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white"
-                    >
-                      Login
-                    </button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleRegister(submitRegister)} className="mt-6 space-y-5">
-                    <div>
-                      <label className="text-sm font-semibold text-ink">Full name</label>
-                      <input
-                        {...registerRegister('name')}
-                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
-                        placeholder="Your name"
-                      />
-                      {registerErrors.name && (
-                        <p className="mt-2 text-xs text-red-600">{registerErrors.name.message}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-ink">Email</label>
-                      <input
-                        {...registerRegister('email')}
-                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
-                        placeholder="you@email.com"
-                      />
-                      {registerErrors.email && (
-                        <p className="mt-2 text-xs text-red-600">{registerErrors.email.message}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-sm font-semibold text-ink">Password</label>
-                      <input
-                        {...registerRegister('password')}
-                        type="password"
-                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
-                        placeholder="••••••••"
-                      />
-                      {registerErrors.password && (
-                        <p className="mt-2 text-xs text-red-600">{registerErrors.password.message}</p>
-                      )}
-                    </div>
-                    <button
-                      type="submit"
-                      className="rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white"
-                    >
-                      Create account
-                    </button>
-                  </form>
-                )}
+                </form>
                 {message && <p className="mt-4 text-sm font-semibold text-emberDark">{message}</p>}
-
-                <div className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-5">
-                  <p className="text-xs uppercase tracking-[0.35em] text-muted">Quick sign-in</p>
-                  <p className="mt-2 text-sm text-muted">
-                    No separate registration needed — social sign-in will create your account automatically.
-                  </p>
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    <a
-                      href="/api/oauth/google/start"
-                      className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-emberDark hover:border-gold/40"
-                    >
-                      Continue with Google
-                    </a>
-                    <a
-                      href="/api/oauth/github/start"
-                      className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-emberDark hover:border-gold/40"
-                    >
-                      Continue with GitHub
-                    </a>
-                    <a
-                      href="/api/oauth/linkedin/start"
-                      className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-emberDark hover:border-gold/40"
-                    >
-                      Continue with LinkedIn
-                    </a>
-                  </div>
-                  <p className="mt-3 text-[11px] text-muted">
-                    Note: Social login requires provider keys in the backend `.env` file.
-                  </p>
-                </div>
               </>
             )}
           </div>
 
           <div className="rounded-3xl border border-slate-200/80 bg-white p-8 shadow-lg shadow-black/10">
-            <h2 className="text-xl font-semibold text-ink">Why create an account?</h2>
+            <h2 className="text-xl font-semibold text-ink">Why login?</h2>
             <ul className="mt-4 space-y-3 text-sm text-muted">
               <li>Leave verified reviews on products.</li>
               <li>Track orders and delivery updates.</li>
               <li>Faster inquiries for custom or bulk orders.</li>
             </ul>
+            <p className="mt-5 text-sm text-muted">
+              Need a new account? Please contact Kannauj Attars directly.
+            </p>
+            <Link
+              to="/contact"
+              className="mt-5 inline-flex rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-emberDark hover:border-gold/40"
+            >
+              Contact us
+            </Link>
           </div>
         </div>
       </section>

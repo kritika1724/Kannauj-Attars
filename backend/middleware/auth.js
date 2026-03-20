@@ -32,6 +32,33 @@ const protect = async (req, res, next) => {
   }
 }
 
+const optionalProtect = async (req, _res, next) => {
+  try {
+    const auth = req.headers.authorization
+    if (!auth || !auth.startsWith('Bearer ')) {
+      return next()
+    }
+
+    const token = auth.split(' ')[1]
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    if (decoded?.typ && decoded.typ !== 'access') {
+      return next()
+    }
+
+    const user = await User.findById(decoded.id).select('-password')
+    if (!user) {
+      return next()
+    }
+
+    user.isAdmin = isAdminEmail(user.email)
+    user.role = user.isAdmin ? 'admin' : 'user'
+    req.user = user
+    return next()
+  } catch {
+    return next()
+  }
+}
+
 const isAdmin = (req, res, next) => {
   if (!req.user) return res.status(401).json({ message: 'Not authorized' })
   if (isAdminEmail(req.user.email)) return next()
@@ -41,4 +68,4 @@ const isAdmin = (req, res, next) => {
 // Backward-compatible alias (existing routes import adminOnly).
 const adminOnly = isAdmin
 
-module.exports = { protect, isAdmin, adminOnly }
+module.exports = { protect, optionalProtect, isAdmin, adminOnly }

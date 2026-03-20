@@ -122,7 +122,11 @@ function AdminDashboard() {
                     <div>
                       <p className="text-sm font-semibold text-ink">{order._id}</p>
                       <p className="mt-1 text-xs text-muted">
-                        {order.user?.name ? `${order.user.name} • ` : ''}
+                        {order.user?.name
+                          ? `${order.user.name} • `
+                          : order.shippingAddress?.fullName
+                            ? `${order.shippingAddress.fullName} • `
+                            : ''}
                         {order.createdAt ? new Date(order.createdAt).toLocaleString() : ''}
                       </p>
                     </div>

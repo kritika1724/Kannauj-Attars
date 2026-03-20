@@ -1,6 +1,6 @@
 const CART_NS = 'cart:v1'
 
-export const cartKeyFor = (userId) => `${CART_NS}:${String(userId || '').trim()}`
+export const cartKeyFor = (userId) => `${CART_NS}:${String(userId || 'guest').trim() || 'guest'}`
 
 export const loadCartForUser = (userId, fallback) => {
   try {
@@ -16,11 +16,9 @@ export const loadCartForUser = (userId, fallback) => {
 
 export const saveCartForUser = (userId, snapshot) => {
   try {
-    if (!userId) return
     const key = cartKeyFor(userId)
     localStorage.setItem(key, JSON.stringify(snapshot))
   } catch {
     // ignore
   }
 }
-

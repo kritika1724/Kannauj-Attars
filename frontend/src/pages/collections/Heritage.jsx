@@ -62,10 +62,10 @@ function Heritage() {
                 Explore products
               </Link>
               <Link
-                to="/about"
+                to="/"
                 className="rounded-full border border-gold/25 bg-white px-5 py-2 text-sm font-semibold text-ink"
               >
-                About Kannauj
+                Back to home
               </Link>
             </div>
           </div>

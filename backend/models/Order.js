@@ -16,10 +16,11 @@ const orderItemSchema = new mongoose.Schema(
 
 const orderSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     orderItems: { type: [orderItemSchema], required: true, default: [] },
     shippingAddress: {
       fullName: { type: String, required: true },
+      email: { type: String, required: true },
       phone: { type: String, required: true },
       addressLine1: { type: String, required: true },
       addressLine2: { type: String, default: '' },

@@ -7,6 +7,7 @@ import { saveShippingAddress } from '../../features/cartSlice'
 
 const schema = yup.object({
   fullName: yup.string().required('Full name is required.'),
+  email: yup.string().email('Enter a valid email.').required('Email is required.'),
   phone: yup.string().required('Phone is required.'),
   addressLine1: yup.string().required('Address is required.'),
   addressLine2: yup.string(),
@@ -54,6 +55,14 @@ function Shipping() {
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink"
               />
               {errors.fullName && <p className="mt-2 text-xs text-red-600">{errors.fullName.message}</p>}
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-ink">Email</label>
+              <input
+                {...register('email')}
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink"
+              />
+              {errors.email && <p className="mt-2 text-xs text-red-600">{errors.email.message}</p>}
             </div>
             <div>
               <label className="text-sm font-semibold text-ink">Phone</label>

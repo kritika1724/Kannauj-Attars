@@ -43,6 +43,7 @@ function OrderDetail() {
     if (!address) return ''
     return [
       `${address.fullName} (${address.phone})`,
+      address.email || '',
       address.addressLine1 + (address.addressLine2 ? `, ${address.addressLine2}` : ''),
       `${address.city}, ${address.state} ${address.postalCode}`,
       address.country,

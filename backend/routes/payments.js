@@ -1,7 +1,6 @@
 const express = require('express')
 const crypto = require('crypto')
 const Order = require('../models/Order')
-const { protect } = require('../middleware/auth')
 
 const router = express.Router()
 
@@ -16,7 +15,7 @@ const mustGetRazorpayConfig = () => {
   return { keyId, keySecret }
 }
 
-const getOrderOr403 = async ({ orderId, user }) => {
+const getOrderOr404 = async (orderId) => {
   const order = await Order.findById(orderId).populate('user', 'email')
   if (!order) {
     const err = new Error('Order not found')
@@ -24,24 +23,18 @@ const getOrderOr403 = async ({ orderId, user }) => {
     throw err
   }
 
-  if (order.user?._id?.toString() !== user._id.toString()) {
-    const err = new Error('Not authorized')
-    err.statusCode = 403
-    throw err
-  }
-
   return order
 }
 
 // Create (or re-create) a Razorpay order for a given app Order.
-router.post('/razorpay/order', protect, async (req, res) => {
+router.post('/razorpay/order', async (req, res) => {
   try {
     const { keyId, keySecret } = mustGetRazorpayConfig()
 
     const orderId = String(req.body?.orderId || '').trim()
     if (!orderId) return res.status(400).json({ message: 'orderId is required' })
 
-    const order = await getOrderOr403({ orderId, user: req.user })
+    const order = await getOrderOr404(orderId)
 
     if ((order.paymentMethod || '').toUpperCase() !== 'RAZORPAY') {
       return res.status(400).json({ message: 'Order payment method is not Razorpay' })
@@ -62,7 +55,7 @@ router.post('/razorpay/order', protect, async (req, res) => {
       receipt: order._id.toString(),
       notes: {
         app_order_id: order._id.toString(),
-        email: req.user.email || '',
+        email: order.shippingAddress?.email || order.user?.email || '',
       },
     }
 
@@ -89,7 +82,7 @@ router.post('/razorpay/order', protect, async (req, res) => {
       razorpayOrderId: data.id,
       amount: data.amount,
       currency: data.currency,
-      email: req.user.email || '',
+      email: order.shippingAddress?.email || order.user?.email || '',
     }
 
     await order.save()
@@ -107,7 +100,7 @@ router.post('/razorpay/order', protect, async (req, res) => {
 })
 
 // Verify payment signature and mark paid.
-router.post('/razorpay/verify', protect, async (req, res) => {
+router.post('/razorpay/verify', async (req, res) => {
   try {
     const { keySecret } = mustGetRazorpayConfig()
 
@@ -121,7 +114,7 @@ router.post('/razorpay/verify', protect, async (req, res) => {
       return res.status(400).json({ message: 'Missing Razorpay verification fields' })
     }
 
-    const order = await getOrderOr403({ orderId, user: req.user })
+    const order = await getOrderOr404(orderId)
 
     if ((order.paymentMethod || '').toUpperCase() !== 'RAZORPAY') {
       return res.status(400).json({ message: 'Order payment method is not Razorpay' })
@@ -153,7 +146,7 @@ router.post('/razorpay/verify', protect, async (req, res) => {
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
-      email: req.user.email || '',
+      email: order.shippingAddress?.email || order.user?.email || '',
     }
 
     const updated = await order.save()

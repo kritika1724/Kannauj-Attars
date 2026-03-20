@@ -5,6 +5,7 @@ import { clearCart } from '../../features/cartSlice'
 import { auth } from '../../services/api'
 import { useEffect, useMemo } from 'react'
 import { openRazorpayCheckout } from '../../utils/razorpay'
+import { saveLastOrder } from '../../utils/orderStorage'
 
 function PlaceOrder() {
   const navigate = useNavigate()
@@ -37,7 +38,7 @@ function PlaceOrder() {
       description: `Order ${order._id}`,
       prefill: {
         name: shippingAddress?.fullName || user?.name || '',
-        email: user?.email || '',
+        email: shippingAddress?.email || user?.email || '',
         contact: shippingAddress?.phone || '',
       },
       themeColor: '#111B3A',
@@ -47,6 +48,7 @@ function PlaceOrder() {
             orderId: order._id,
             ...response,
           })
+          saveLastOrder(updated)
           dispatch(clearCart())
           navigate(`/checkout/success/${updated._id}`)
         } catch (e) {
@@ -60,11 +62,6 @@ function PlaceOrder() {
   }
 
   const placeOrder = async () => {
-    if (!user) {
-      navigate('/account')
-      return
-    }
-
     const payload = {
       orderItems: items.map((i) => ({ product: i.product, qty: i.qty, packLabel: i.packLabel || '' })),
       shippingAddress,
@@ -73,6 +70,7 @@ function PlaceOrder() {
 
     const method = String(paymentMethod || 'COD').toUpperCase()
     const order = await api.createOrder(payload)
+    saveLastOrder(order)
 
     if (method === 'RAZORPAY') {
       // Keep cart until payment success; user can retry if needed.
@@ -81,7 +79,7 @@ function PlaceOrder() {
     }
 
     dispatch(clearCart())
-    navigate(`/order/${order._id}`)
+    navigate(`/checkout/success/${order._id}`)
   }
 
   return (
@@ -100,6 +98,8 @@ function PlaceOrder() {
               <h2 className="text-lg font-semibold text-ink">Shipping</h2>
               <p className="mt-3 text-sm text-muted">
                 {shippingAddress.fullName}, {shippingAddress.phone}
+                <br />
+                {shippingAddress.email}
                 <br />
                 {shippingAddress.addressLine1}
                 {shippingAddress.addressLine2 ? `, ${shippingAddress.addressLine2}` : ''}
@@ -173,9 +173,7 @@ function PlaceOrder() {
             >
               {(paymentMethod || 'COD').toUpperCase() === 'RAZORPAY' ? 'Pay now' : 'Place order'}
             </button>
-            {!user && (
-              <p className="mt-3 text-xs text-muted">Login is required to place an order.</p>
-            )}
+            <p className="mt-3 text-xs text-muted">We will use your checkout details to confirm the order.</p>
           </div>
         </div>
       </section>

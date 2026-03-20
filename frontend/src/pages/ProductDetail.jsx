@@ -285,16 +285,6 @@ function ProductDetail() {
                       qty,
                     }
 
-                    if (!auth.getUser()) {
-                      try {
-                        sessionStorage.setItem('pendingAddToCart', JSON.stringify(item))
-                      } catch {
-                        // ignore
-                      }
-                      navigate('/account', { state: { intent: 'cart' } })
-                      return
-                    }
-
                     dispatch(addToCart(item))
                     navigate('/cart')
                   }}

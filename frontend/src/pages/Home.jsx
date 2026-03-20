@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiDroplet, FiWind, FiFeather } from 'react-icons/fi'
+import { FiDroplet, FiWind, FiFeather, FiUser, FiMapPin, FiMail, FiPackage, FiAward } from 'react-icons/fi'
 import AdminAssetImage from '../components/AdminAssetImage'
 import { auth } from '../services/api'
 import RecentlyViewedStrip from '../components/RecentlyViewedStrip'
+import { BUSINESS } from '../config/business'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -38,10 +39,10 @@ function Home() {
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
-                to="/explore"
+                to="/products"
                 className="ka-btn-primary"
               >
-                Explore collections
+                Browse collections
               </Link>
               <Link
                 to="/gallery"
@@ -207,7 +208,7 @@ function Home() {
       <section className="bg-sand px-6 py-20">
         <div className="mx-auto w-full max-w-6xl">
           <div className="mb-10 max-w-2xl">
-            <p className="ka-kicker">Explore</p>
+            <p className="ka-kicker">Collections</p>
             <h2 className="mt-4 ka-h2">Choose your attar journey</h2>
             <p className="mt-4 text-muted">Discover blends that align with your mood, season, and story.</p>
           </div>
@@ -259,6 +260,127 @@ function Home() {
         </div>
       </section>
 
+      <section id="about-brand" className="bg-gradient-to-b from-sand to-clay px-6 py-20">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-10 max-w-3xl">
+            <p className="ka-kicker">About Kannauj Attars</p>
+            <h2 className="mt-4 ka-h2">
+              {BUSINESS.name} — a private enterprise founded in {BUSINESS.since}
+            </h2>
+            <p className="mt-4 text-muted">{BUSINESS.about}</p>
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="ka-panel p-8">
+              <div className="flex items-center gap-3">
+                <FiUser className="text-ember" size={24} />
+                <h3 className="text-xl font-semibold text-ink">Founder & CEO</h3>
+              </div>
+              <div className="mt-6">
+                <AdminAssetImage
+                  assetKey="about.ceo.photo"
+                  className="ka-frame aspect-[4/5] w-full bg-[radial-gradient(circle_at_top,rgba(201,162,74,0.22),rgba(255,255,255,0.95))]"
+                  imgClassName="p-3"
+                  defaultAspect="4 / 5"
+                  fit="contain"
+                />
+              </div>
+              <p className="mt-4 text-lg font-semibold text-ink">{BUSINESS.founder}</p>
+              <p className="mt-1 text-sm font-semibold text-emberDark">{BUSINESS.founderTitle}</p>
+              <p className="mt-3 text-sm text-muted">
+                Established in {BUSINESS.since}, the enterprise continues to blend authentic Kannauj craft with
+                dependable quality for both personal buyers and trade requirements.
+              </p>
+              <Link
+                to="/ceo"
+                className="mt-5 inline-flex w-fit items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-emberDark transition hover:border-gold/50 hover:bg-clay/60"
+              >
+                Know about CEO →
+              </Link>
+            </div>
+
+            <div className="ka-card p-8">
+              <div className="flex items-center gap-3">
+                <FiPackage className="text-ember" size={24} />
+                <h3 className="text-xl font-semibold text-ink">Business details</h3>
+              </div>
+              <p className="mt-4 text-sm text-muted">Private enterprise: {BUSINESS.name}</p>
+
+              <div className="mt-4 rounded-2xl border border-slate-200/80 bg-white p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Deals in</p>
+                <ul className="mt-4 space-y-2 text-sm text-muted">
+                  {BUSINESS.dealsIn.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {Array.isArray(BUSINESS.associations) && BUSINESS.associations.length ? (
+                <div className="mt-4 rounded-2xl border border-gold/25 bg-clay/60 p-5">
+                  <div className="flex items-center gap-3">
+                    <FiAward className="text-ember" size={18} />
+                    <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">
+                      Memberships & Associations
+                    </p>
+                  </div>
+                  <div className="mt-4 grid gap-3">
+                    {BUSINESS.associations.map((association) => (
+                      <div
+                        key={`${association.name}-${association.location}`}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/40 bg-white/70 px-4 py-3"
+                      >
+                        <p className="text-sm font-semibold text-ink">{association.name}</p>
+                        {association.location ? (
+                          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-emberDark">
+                            {association.location}
+                          </span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6 flex items-center gap-3 text-sm font-semibold text-emberDark">
+                <FiMail size={18} />
+                <a href={`mailto:${BUSINESS.email}`} className="hover:text-ink">
+                  {BUSINESS.email}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="locations" className="bg-sand px-6 py-20">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-8 max-w-2xl">
+            <p className="ka-kicker">Offices</p>
+            <h2 className="mt-4 ka-h2">Our locations</h2>
+            <p className="mt-4 text-muted">
+              From Kannauj to Mumbai, the business stays connected to both heritage craft and active trade networks.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <FiMapPin className="text-ember" size={22} />
+                <h3 className="text-lg font-semibold text-ink">{BUSINESS.offices.kannauj.label}</h3>
+              </div>
+              <p className="mt-3 text-sm text-muted">{BUSINESS.offices.kannauj.address}</p>
+            </div>
+            <div className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <FiMapPin className="text-ember" size={22} />
+                <h3 className="text-lg font-semibold text-ink">{BUSINESS.offices.mumbai.label}</h3>
+              </div>
+              <p className="mt-3 text-sm text-muted">{BUSINESS.offices.mumbai.address}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="bg-gradient-to-b from-sand to-clay">
         <RecentlyViewedStrip />
       </div>
@@ -271,10 +393,10 @@ function Home() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
-              to="/explore"
+              to="/products"
               className="ka-btn-primary px-5 py-2"
             >
-              Explore
+              Browse products
             </Link>
             <a
               href="#top"

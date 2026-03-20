@@ -1,13 +1,11 @@
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useNavigate } from 'react-router-dom'
 import { removeFromCart, updateQty } from '../features/cartSlice'
-import { auth } from '../services/api'
 
 function Cart() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const items = useSelector((state) => state.cart.items)
-  const user = auth.getUser()
 
   const itemsPrice = items.reduce((sum, item) => sum + item.qty * item.price, 0)
 
@@ -89,16 +87,14 @@ function Cart() {
             </div>
             <button
               disabled={items.length === 0}
-              onClick={() => navigate(user ? '/checkout/shipping' : '/account')}
+              onClick={() => navigate('/checkout/shipping')}
               className="mt-6 w-full rounded-full bg-ember px-5 py-3 text-sm font-semibold text-white transition hover:bg-emberDark disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {user ? 'Proceed to checkout' : 'Login to checkout'}
+              Proceed to checkout
             </button>
-            {!user ? (
-              <p className="mt-3 text-xs font-semibold text-muted">
-                You must sign in to place an order.
-              </p>
-            ) : null}
+            <p className="mt-3 text-xs font-semibold text-muted">
+              You can continue checkout without logging in.
+            </p>
             <Link
               to="/products"
               className="mt-3 ka-btn-ghost w-full px-5 py-3"

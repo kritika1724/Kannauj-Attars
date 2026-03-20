@@ -29,12 +29,7 @@ function CartBootstrap() {
   useEffect(() => {
     const sync = () => {
       const user = auth.getUser()
-      const ownerId = user?.id || user?._id || null
-
-      if (!ownerId) {
-        dispatch(hydrateCart(DEFAULT_CART_STATE))
-        return
-      }
+      const ownerId = user?.id || user?._id || 'guest'
 
       const snapshot = loadCartForUser(ownerId, DEFAULT_CART_STATE)
       dispatch(

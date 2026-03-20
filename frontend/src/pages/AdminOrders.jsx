@@ -101,7 +101,9 @@ function AdminOrders() {
                     <div>
                       <p className="text-sm font-semibold text-ink">{order._id}</p>
                       <p className="mt-1 text-xs text-muted">
-                        {order.user?.name ? `${order.user.name} • ${order.user.email}` : '—'}
+                        {order.user?.name
+                          ? `${order.user.name} • ${order.user.email}`
+                          : `${order.shippingAddress?.fullName || 'Guest'} • ${order.shippingAddress?.email || 'No email'}`}
                       </p>
                       <p className="mt-1 text-xs text-muted">
                         {order.createdAt ? new Date(order.createdAt).toLocaleString() : ''}

@@ -94,8 +94,8 @@ function Ceo() {
             <div className="mt-8 rounded-2xl border border-gold/25 bg-clay/60 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Quick links</p>
               <div className="mt-4 flex flex-wrap gap-3">
-                <Link to="/explore" className="ka-btn-primary px-5 py-2">
-                  Explore
+                <Link to="/products" className="ka-btn-primary px-5 py-2">
+                  Products
                 </Link>
                 <Link to="/custom-blends" className="ka-btn-ghost px-5 py-2">
                   Custom blends
@@ -132,8 +132,8 @@ function Ceo() {
               </div>
             </div>
 
-            <Link to="/about" className="mt-6 inline-flex text-sm font-semibold text-emberDark hover:text-ink">
-              Back to About →
+            <Link to="/" className="mt-6 inline-flex text-sm font-semibold text-emberDark hover:text-ink">
+              Back to Home →
             </Link>
           </div>
         </div>

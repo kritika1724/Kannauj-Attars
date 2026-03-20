@@ -5,8 +5,6 @@ import { auth } from './services/api'
 import { FiMenu, FiX } from 'react-icons/fi'
 
 import Home from './pages/Home'
-import About from './pages/About'
-import Explore from './pages/Explore'
 import Contact from './pages/Contact'
 import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
@@ -131,12 +129,6 @@ function App() {
               <NavLink to="/" end className={navLinkClass}>
                 Home
               </NavLink>
-              <NavLink to="/about" className={navLinkClass}>
-                About
-              </NavLink>
-              <NavLink to="/explore" className={navLinkClass}>
-                Explore
-              </NavLink>
               <NavLink to="/products" className={navLinkClass}>
                 Products
               </NavLink>
@@ -152,7 +144,7 @@ function App() {
                   </span>
                 </NavLink>
               ) : null}
-              {!isAdmin && isLoggedIn ? (
+              {!isAdmin ? (
                 <NavLink to="/cart" className={navLinkClass}>
                   <span className="inline-flex items-center gap-2">
                     Cart
@@ -176,7 +168,7 @@ function App() {
                 </NavLink>
               ) : null}
               <NavLink to="/account" className={navLinkClass}>
-                Account
+                {user ? 'Account' : 'Login'}
               </NavLink>
             </nav>
 
@@ -209,12 +201,6 @@ function App() {
                     <NavLink to="/" end className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
                       Home
                     </NavLink>
-                    <NavLink to="/about" className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
-                      About
-                    </NavLink>
-                    <NavLink to="/explore" className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
-                      Explore
-                    </NavLink>
                     <NavLink to="/products" className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
                       Products
                     </NavLink>
@@ -232,7 +218,7 @@ function App() {
                       </NavLink>
                     ) : null}
 
-                    {!isAdmin && isLoggedIn ? (
+                    {!isAdmin ? (
                       <NavLink to="/cart" className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
                         <span className="inline-flex items-center gap-2">
                           Cart
@@ -256,7 +242,7 @@ function App() {
                     ) : null}
 
                     <NavLink to="/account" className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
-                      Account
+                      {user ? 'Account' : 'Login'}
                     </NavLink>
                   </div>
                 </div>
@@ -267,8 +253,8 @@ function App() {
 
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/explore" element={<Explore />} />
+          <Route path="/about" element={<Navigate to="/" replace />} />
+          <Route path="/explore" element={<Navigate to="/" replace />} />
           <Route path="/products" element={<Products />} />
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/gallery" element={<Gallery />} />
@@ -301,10 +287,8 @@ function App() {
             element={
               isAdmin ? (
                 <Navigate to="/admin" replace />
-              ) : isLoggedIn ? (
-                <Cart />
               ) : (
-                <Navigate to="/account" replace />
+                <Cart />
               )
             }
           />
@@ -326,9 +310,7 @@ function App() {
               isAdmin ? (
                 <Navigate to="/admin" replace />
               ) : (
-                <ProtectedRoute>
-                  <Shipping />
-                </ProtectedRoute>
+                <Shipping />
               )
             }
           />
@@ -338,9 +320,7 @@ function App() {
               isAdmin ? (
                 <Navigate to="/admin" replace />
               ) : (
-                <ProtectedRoute>
-                  <Payment />
-                </ProtectedRoute>
+                <Payment />
               )
             }
           />
@@ -350,9 +330,7 @@ function App() {
               isAdmin ? (
                 <Navigate to="/admin" replace />
               ) : (
-                <ProtectedRoute>
-                  <PlaceOrder />
-                </ProtectedRoute>
+                <PlaceOrder />
               )
             }
           />
@@ -362,9 +340,7 @@ function App() {
               isAdmin ? (
                 <Navigate to="/admin/orders" replace />
               ) : (
-                <ProtectedRoute>
-                  <PaymentSuccess />
-                </ProtectedRoute>
+                <PaymentSuccess />
               )
             }
           />
@@ -374,9 +350,7 @@ function App() {
               isAdmin ? (
                 <Navigate to="/admin/orders" replace />
               ) : (
-                <ProtectedRoute>
-                  <PaymentFailure />
-                </ProtectedRoute>
+                <PaymentFailure />
               )
             }
           />

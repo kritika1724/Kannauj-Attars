@@ -1,7 +1,7 @@
 const express = require('express')
 const Order = require('../models/Order')
 const Product = require('../models/Product')
-const { protect, adminOnly } = require('../middleware/auth')
+const { protect, optionalProtect, adminOnly } = require('../middleware/auth')
 
 const router = express.Router()
 
@@ -20,7 +20,7 @@ const isBulkPack = (label) => {
 }
 
 // Create order
-router.post('/', protect, async (req, res) => {
+router.post('/', optionalProtect, async (req, res) => {
   if (req.user?.isAdmin === true) {
     return res.status(403).json({ message: 'Admins cannot place orders' })
   }
@@ -31,8 +31,8 @@ router.post('/', protect, async (req, res) => {
     return res.status(400).json({ message: 'Order items are required' })
   }
 
-  if (!shippingAddress) {
-    return res.status(400).json({ message: 'Shipping address is required' })
+  if (!shippingAddress?.fullName || !shippingAddress?.email || !shippingAddress?.phone) {
+    return res.status(400).json({ message: 'Name, email, and phone are required' })
   }
 
   // Recalculate prices from DB (don’t trust client pricing)
@@ -95,9 +95,12 @@ router.post('/', protect, async (req, res) => {
   }
 
   const order = await Order.create({
-    user: req.user._id,
+    user: req.user?._id || null,
     orderItems: normalizedItems,
-    shippingAddress,
+    shippingAddress: {
+      ...shippingAddress,
+      email: String(shippingAddress.email || '').trim().toLowerCase(),
+    },
     paymentMethod: method || 'COD',
     itemsPrice,
     shippingPrice,
