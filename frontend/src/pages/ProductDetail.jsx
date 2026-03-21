@@ -3,13 +3,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import { api, auth } from '../services/api'
 import { addToCart } from '../features/cartSlice'
-import { addToWishlist, removeFromWishlist } from '../features/wishlistSlice'
 import { viewProduct as trackView } from '../features/recentlyViewedSlice'
 import { toAssetUrl } from '../utils/media'
-import { FiHeart } from 'react-icons/fi'
 import RecentlyViewedStrip from '../components/RecentlyViewedStrip'
 
 const schema = yup.object({
@@ -51,8 +49,6 @@ function ProductDetail() {
   const [buyerType, setBuyerType] = useState('personal') // personal | industrial
   const user = auth.getUser()
   const isAdmin = user?.isAdmin === true
-  const wishlistItems = useSelector((state) => state.wishlist.items)
-  const wished = wishlistItems.some((x) => x.product === id)
 
   const {
     register,
@@ -296,42 +292,10 @@ function ProductDetail() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    const packs = Array.isArray(product?.packs) ? product.packs : []
-                    const normalized = packs
-                      .map((p) => ({ label: (p.label || '').trim(), price: Number(p.price) }))
-                      .filter((p) => p.label && !Number.isNaN(p.price))
-                    const minPack = normalized.length
-                      ? normalized.reduce((min, p) => (p.price < min.price ? p : min), normalized[0])
-                      : null
-
-                    const item = {
-                      product: product._id,
-                      name: product.name,
-                      image: product.images?.[0] || '',
-                      price: minPack ? minPack.price : product.price,
-                      packLabel: minPack ? minPack.label : '',
-                    }
-
-                    if (!auth.getUser()) {
-                      try {
-                        sessionStorage.setItem('pendingAddToWishlist', JSON.stringify(item))
-                      } catch {
-                        // ignore
-                      }
-                      navigate('/account', { state: { intent: 'wishlist' } })
-                      return
-                    }
-
-                    if (wished) dispatch(removeFromWishlist(product._id))
-                    else dispatch(addToWishlist(item))
-                  }}
-                  className={`inline-flex items-center gap-2 rounded-full border bg-white px-5 py-2 text-sm font-semibold transition hover:border-gold/50 hover:bg-clay/60 ${
-                    wished ? 'border-gold/60 text-emberDark' : 'border-slate-200 text-emberDark'
-                  }`}
+                  onClick={() => navigate('/products')}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-emberDark transition hover:border-gold/50 hover:bg-clay/60"
                 >
-                  <FiHeart className={wished ? 'text-ember' : 'text-muted'} />
-                  {wished ? 'Saved' : 'Save'}
+                  Continue shopping
                 </button>
                 <Link
                   to="/products"

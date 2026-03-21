@@ -9,6 +9,7 @@ const schema = yup.object({
   fullName: yup.string().required('Full name is required.'),
   email: yup.string().email('Enter a valid email.').required('Email is required.'),
   phone: yup.string().required('Phone is required.'),
+  whatsapp: yup.string().required('WhatsApp number is required.'),
   addressLine1: yup.string().required('Address is required.'),
   addressLine2: yup.string(),
   city: yup.string().required('City is required.'),
@@ -71,6 +72,17 @@ function Shipping() {
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink"
               />
               {errors.phone && <p className="mt-2 text-xs text-red-600">{errors.phone.message}</p>}
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-ink">WhatsApp number</label>
+              <input
+                {...register('whatsapp')}
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink"
+                placeholder="+91XXXXXXXXXX"
+              />
+              {errors.whatsapp && (
+                <p className="mt-2 text-xs text-red-600">{errors.whatsapp.message}</p>
+              )}
             </div>
             <div>
               <label className="text-sm font-semibold text-ink">Address line 1</label>

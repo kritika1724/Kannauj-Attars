@@ -26,6 +26,23 @@ function PlaceOrder() {
     }
   }, [paymentMethod, totalPrice, navigate])
 
+  useEffect(() => {
+    const required = [
+      shippingAddress?.fullName,
+      shippingAddress?.email,
+      shippingAddress?.phone,
+      shippingAddress?.whatsapp,
+      shippingAddress?.addressLine1,
+      shippingAddress?.city,
+      shippingAddress?.state,
+      shippingAddress?.postalCode,
+      shippingAddress?.country,
+    ]
+    if (required.some((value) => !String(value || '').trim())) {
+      navigate('/checkout/shipping', { replace: true })
+    }
+  }, [shippingAddress, navigate])
+
   const payWithRazorpay = async (order) => {
     const rzp = await api.createRazorpayOrder(order._id)
 
@@ -35,11 +52,11 @@ function PlaceOrder() {
       amount: rzp.amount,
       currency: rzp.currency,
       name: 'Kannauj Attars',
-      description: `Order ${order._id}`,
+      description: `Order ${order.publicOrderId || order._id}`,
       prefill: {
         name: shippingAddress?.fullName || user?.name || '',
         email: shippingAddress?.email || user?.email || '',
-        contact: shippingAddress?.phone || '',
+        contact: shippingAddress?.whatsapp || shippingAddress?.phone || '',
       },
       themeColor: '#111B3A',
       onSuccess: async (response) => {
@@ -98,6 +115,8 @@ function PlaceOrder() {
               <h2 className="text-lg font-semibold text-ink">Shipping</h2>
               <p className="mt-3 text-sm text-muted">
                 {shippingAddress.fullName}, {shippingAddress.phone}
+                <br />
+                WhatsApp: {shippingAddress.whatsapp}
                 <br />
                 {shippingAddress.email}
                 <br />

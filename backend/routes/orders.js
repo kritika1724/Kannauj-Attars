@@ -1,4 +1,5 @@
 const express = require('express')
+const mongoose = require('mongoose')
 const Order = require('../models/Order')
 const Product = require('../models/Product')
 const { protect, optionalProtect, adminOnly } = require('../middleware/auth')
@@ -18,6 +19,12 @@ const packToGrams = (label) => {
 const isBulkPack = (label) => {
   const grams = packToGrams(label)
   return grams !== null && Number.isFinite(grams) && grams >= 1000
+}
+
+const normalizePhone = (value) => {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (!digits) return ''
+  return digits.length > 10 ? digits.slice(-10) : digits
 }
 
 const canAccessOrder = (reqUser, orderUserId) => {
@@ -42,8 +49,13 @@ router.post(
       return res.status(400).json({ message: 'Order items are required' })
     }
 
-    if (!shippingAddress?.fullName || !shippingAddress?.email || !shippingAddress?.phone) {
-      return res.status(400).json({ message: 'Name, email, and phone are required' })
+    if (
+      !shippingAddress?.fullName ||
+      !shippingAddress?.email ||
+      !shippingAddress?.phone ||
+      !shippingAddress?.whatsapp
+    ) {
+      return res.status(400).json({ message: 'Name, email, phone, and WhatsApp number are required' })
     }
 
     const productIds = [...new Set(orderItems.map((item) => String(item.product || '')).filter(Boolean))]
@@ -115,6 +127,8 @@ router.post(
       shippingAddress: {
         ...shippingAddress,
         email: String(shippingAddress.email || '').trim().toLowerCase(),
+        phone: String(shippingAddress.phone || '').trim(),
+        whatsapp: String(shippingAddress.whatsapp || '').trim(),
       },
       paymentMethod: method || 'COD',
       itemsPrice,
@@ -128,13 +142,58 @@ router.post(
   })
 )
 
+// Public: track order using short tracking ID + phone/WhatsApp
+router.get(
+  '/track/:publicOrderId',
+  asyncHandler(async (req, res) => {
+    const publicOrderId = String(req.params.publicOrderId || '').trim().toUpperCase()
+    const contactValue = normalizePhone(req.query.whatsapp || req.query.phone || '')
+
+    if (!publicOrderId) {
+      return res.status(400).json({ message: 'Order id is required' })
+    }
+
+    if (!contactValue) {
+      return res.status(400).json({ message: 'WhatsApp or phone number is required' })
+    }
+
+    let order = await Order.findOne({ publicOrderId })
+      .select(
+        'publicOrderId status createdAt updatedAt paymentMethod isPaid paidAt totalPrice itemsPrice shippingPrice taxPrice orderItems shippingAddress.fullName shippingAddress.phone shippingAddress.whatsapp shippingAddress.email shippingAddress.city shippingAddress.state shippingAddress.postalCode shippingAddress.country'
+      )
+      .lean()
+
+    if (!order && mongoose.isValidObjectId(publicOrderId)) {
+      order = await Order.findById(publicOrderId)
+        .select(
+          '_id publicOrderId status createdAt updatedAt paymentMethod isPaid paidAt totalPrice itemsPrice shippingPrice taxPrice orderItems shippingAddress.fullName shippingAddress.phone shippingAddress.whatsapp shippingAddress.email shippingAddress.city shippingAddress.state shippingAddress.postalCode shippingAddress.country'
+        )
+        .lean()
+    }
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' })
+    }
+
+    const allowedContacts = [order.shippingAddress?.whatsapp, order.shippingAddress?.phone]
+      .map(normalizePhone)
+      .filter(Boolean)
+
+    if (!allowedContacts.includes(contactValue)) {
+      return res.status(404).json({ message: 'Order not found for the provided details' })
+    }
+
+    res.json(order)
+  })
+)
+
 // Get my orders
 router.get(
   '/mine',
   protect,
   asyncHandler(async (req, res) => {
     const orders = await Order.find({ user: req.user._id })
-      .select('_id totalPrice createdAt status')
+      .select('_id publicOrderId totalPrice createdAt status')
       .sort({ createdAt: -1 })
       .lean()
     res.json(orders)
@@ -148,7 +207,9 @@ router.get(
   adminOnly,
   asyncHandler(async (req, res) => {
     const orders = await Order.find({})
-      .select('_id user shippingAddress.fullName shippingAddress.email totalPrice paymentMethod status createdAt')
+      .select(
+        '_id publicOrderId user shippingAddress.fullName shippingAddress.email shippingAddress.whatsapp totalPrice paymentMethod status createdAt'
+      )
       .populate('user', 'name email')
       .sort({ createdAt: -1 })
       .lean()
@@ -233,9 +294,12 @@ router.put(
 
     if (status === 'cancelled' && !order.cancelledAt) {
       order.cancelledAt = new Date()
+    } else if (status !== 'cancelled') {
+      order.cancelledAt = null
     }
 
     const updated = await order.save()
+    await updated.populate('user', 'name email')
     res.json(updated)
   })
 )

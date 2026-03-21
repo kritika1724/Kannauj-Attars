@@ -122,6 +122,8 @@ export const api = {
   createOrder: (payload) => request('/orders', { method: 'POST', body: JSON.stringify(payload) }),
   getMyOrders: () => request('/orders/mine'),
   getOrder: (id) => request(`/orders/${id}`),
+  trackOrder: (publicOrderId, contact) =>
+    request(`/orders/track/${encodeURIComponent(publicOrderId)}?whatsapp=${encodeURIComponent(contact || '')}`),
   getAllOrders: () => request('/orders'),
   updateOrderStatus: (id, status) =>
     request(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),

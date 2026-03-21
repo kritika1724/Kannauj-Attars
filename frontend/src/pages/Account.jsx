@@ -24,20 +24,9 @@ function Account() {
     }
   }
 
-  const hadPendingWishlistIntent = () => {
-    try {
-      return !!sessionStorage.getItem('pendingAddToWishlist')
-    } catch {
-      return false
-    }
-  }
-
   useEffect(() => {
     if (location?.state?.intent === 'cart' && !user) {
       setMessage('Please sign in to add items to your cart.')
-    }
-    if (location?.state?.intent === 'wishlist' && !user) {
-      setMessage('Please sign in to save items to your wishlist.')
     }
   }, [location?.state?.intent, user])
 
@@ -58,15 +47,12 @@ function Account() {
       // IMPORTANT: read intent BEFORE auth.setSession(), because CartBootstrap
       // consumes/clears pendingAddToCart synchronously on the authchange event.
       const hadPendingCart = hadPendingCartIntent()
-      const hadPendingWishlist = hadPendingWishlistIntent()
       const response = await api.login(data)
       auth.setSession(response)
       setUser(response.user)
       setMessage('Logged in successfully.')
       if (hadPendingCart) {
         navigate('/cart')
-      } else if (hadPendingWishlist) {
-        navigate('/wishlist')
       } else {
         navigate(response.user?.isAdmin === true ? '/admin' : '/account/orders')
       }
@@ -120,14 +106,6 @@ function Account() {
                   >
                     My orders
                   </Link>
-                  {!user.isAdmin ? (
-                    <Link
-                      to="/wishlist"
-                      className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-emberDark hover:border-gold/40"
-                    >
-                      Wishlist
-                    </Link>
-                  ) : null}
                   <Link
                     to="/products"
                     className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-emberDark hover:border-gold/40"

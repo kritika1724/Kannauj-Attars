@@ -24,7 +24,7 @@ router.get(
 
     const [recentOrders, recentContactMessages] = await Promise.all([
       Order.find({})
-        .select('_id user shippingAddress.fullName totalPrice status createdAt')
+        .select('_id publicOrderId user shippingAddress.fullName totalPrice status createdAt')
         .populate('user', 'name email')
         .sort({ createdAt: -1 })
         .limit(5)

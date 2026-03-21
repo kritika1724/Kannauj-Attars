@@ -7,7 +7,6 @@ import store from './store'
 import { SiteAssetsProvider } from './components/SiteAssetsProvider'
 import AuthBootstrap from './components/AuthBootstrap'
 import CartBootstrap from './components/CartBootstrap'
-import WishlistBootstrap from './components/WishlistBootstrap'
 import RecentlyViewedBootstrap from './components/RecentlyViewedBootstrap'
 
 createRoot(document.getElementById('root')).render(
@@ -16,7 +15,6 @@ createRoot(document.getElementById('root')).render(
       <SiteAssetsProvider>
         <AuthBootstrap />
         <CartBootstrap />
-        <WishlistBootstrap />
         <RecentlyViewedBootstrap />
         <App />
       </SiteAssetsProvider>

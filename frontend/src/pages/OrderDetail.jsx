@@ -43,6 +43,7 @@ function OrderDetail() {
     if (!address) return ''
     return [
       `${address.fullName} (${address.phone})`,
+      address.whatsapp ? `WhatsApp: ${address.whatsapp}` : '',
       address.email || '',
       address.addressLine1 + (address.addressLine2 ? `, ${address.addressLine2}` : ''),
       `${address.city}, ${address.state} ${address.postalCode}`,
@@ -86,7 +87,7 @@ function OrderDetail() {
           <p className="text-xs uppercase tracking-[0.35em] text-muted">Order</p>
           <h1 className="mt-4 font-display text-4xl text-ink md:text-5xl">Order details</h1>
           <p className="mt-3 text-sm text-muted">
-            <span className="font-semibold text-ink">{order._id}</span>
+            Order ID: <span className="font-semibold text-ink">{order.publicOrderId || order._id}</span>
             {order.createdAt ? ` • ${new Date(order.createdAt).toLocaleString()}` : ''}
           </p>
         </div>
@@ -198,11 +199,11 @@ function OrderDetail() {
                           amount: rzp.amount,
                           currency: rzp.currency,
                           name: 'Kannauj Attars',
-                          description: `Order ${order._id}`,
+                          description: `Order ${order.publicOrderId || order._id}`,
                           prefill: {
                             name: order?.shippingAddress?.fullName || user?.name || '',
                             email: user?.email || '',
-                            contact: order?.shippingAddress?.phone || '',
+                            contact: order?.shippingAddress?.whatsapp || order?.shippingAddress?.phone || '',
                           },
                           themeColor: '#111B3A',
                           onSuccess: async (response) => {

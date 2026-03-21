@@ -5,6 +5,7 @@ export const DEFAULT_SHIPPING = {
   fullName: '',
   email: '',
   phone: '',
+  whatsapp: '',
   addressLine1: '',
   addressLine2: '',
   city: '',

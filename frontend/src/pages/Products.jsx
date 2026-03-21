@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, auth } from '../services/api'
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import { addToCart } from '../features/cartSlice'
-import { addToWishlist, removeFromWishlist } from '../features/wishlistSlice'
 import AddToCartModal from '../components/AddToCartModal'
 import { toAssetUrl } from '../utils/media'
 import { PURPOSE_TAGS, FAMILY_TAGS } from '../config/taxonomy'
-import { FiHeart } from 'react-icons/fi'
 
 const SORT_VALUES = new Set(['newest', 'price_asc', 'price_desc', 'rating_desc', 'name_asc'])
 const PURPOSE_VALUES = new Set(PURPOSE_TAGS.map((t) => t.id))
@@ -380,10 +378,6 @@ function Products() {
 }
 
 function ProductCard({ product, onView, onAdd, isAdmin }) {
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const wishlistItems = useSelector((state) => state.wishlist.items)
-  const wished = wishlistItems.some((x) => x.product === product._id)
   const minPack = useMemo(() => getMinPack(Array.isArray(product?.packs) ? product.packs : []), [product?.packs])
   const showPack = Array.isArray(product?.packs) && product.packs.length && minPack
 
@@ -401,44 +395,6 @@ function ProductCard({ product, onView, onAdd, isAdmin }) {
           ) : (
             <div className="h-full w-full bg-[linear-gradient(135deg,rgba(201,162,74,0.22),rgba(255,255,255,0.92),rgba(17,27,58,0.10))]" />
           )}
-
-          {!isAdmin ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-
-                const item = {
-                  product: product._id,
-                  name: product.name,
-                  image: product.images?.[0] || '',
-                  price: showPack ? minPack.price : product.price,
-                  packLabel: showPack ? minPack.label : '',
-                }
-
-                if (!auth.getUser()) {
-                  try {
-                    sessionStorage.setItem('pendingAddToWishlist', JSON.stringify(item))
-                  } catch {
-                    // ignore
-                  }
-                  navigate('/account', { state: { intent: 'wishlist' } })
-                  return
-                }
-
-                if (wished) dispatch(removeFromWishlist(product._id))
-                else dispatch(addToWishlist(item))
-              }}
-              className={`absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full border bg-white/95 shadow-sm transition hover:-translate-y-0.5 ${
-                wished ? 'border-gold/60' : 'border-slate-200 hover:border-gold/40'
-              }`}
-              aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
-              title={wished ? 'Saved' : 'Save'}
-            >
-              <FiHeart className={wished ? 'text-ember' : 'text-muted'} />
-            </button>
-          ) : null}
         </div>
       </Link>
 

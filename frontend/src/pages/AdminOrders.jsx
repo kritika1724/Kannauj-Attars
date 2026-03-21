@@ -99,12 +99,16 @@ function AdminOrders() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-ink">{order._id}</p>
+                      <p className="text-xs uppercase tracking-[0.28em] text-muted">Order ID</p>
+                      <p className="text-sm font-semibold text-ink">{order.publicOrderId || order._id}</p>
                       <p className="mt-1 text-xs text-muted">
                         {order.user?.name
                           ? `${order.user.name} • ${order.user.email}`
                           : `${order.shippingAddress?.fullName || 'Guest'} • ${order.shippingAddress?.email || 'No email'}`}
                       </p>
+                      {order.shippingAddress?.whatsapp ? (
+                        <p className="mt-1 text-xs text-muted">WhatsApp: {order.shippingAddress.whatsapp}</p>
+                      ) : null}
                       <p className="mt-1 text-xs text-muted">
                         {order.createdAt ? new Date(order.createdAt).toLocaleString() : ''}
                       </p>

@@ -1,4 +1,8 @@
 const mongoose = require('mongoose')
+const crypto = require('crypto')
+
+const createPublicOrderId = () =>
+  `KA-${Date.now().toString(36).slice(-6).toUpperCase()}${crypto.randomBytes(2).toString('hex').toUpperCase()}`
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -22,6 +26,7 @@ const orderSchema = new mongoose.Schema(
       fullName: { type: String, required: true },
       email: { type: String, required: true },
       phone: { type: String, required: true },
+      whatsapp: { type: String, default: '' },
       addressLine1: { type: String, required: true },
       addressLine2: { type: String, default: '' },
       city: { type: String, required: true },
@@ -29,6 +34,7 @@ const orderSchema = new mongoose.Schema(
       postalCode: { type: String, required: true },
       country: { type: String, required: true, default: 'India' },
     },
+    publicOrderId: { type: String, default: '' },
     paymentMethod: { type: String, required: true, default: 'COD' },
     itemsPrice: { type: Number, required: true },
     shippingPrice: { type: Number, required: true, default: 0 },
@@ -59,9 +65,30 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
+orderSchema.pre('validate', function ensurePublicOrderId(next) {
+  if (!this.publicOrderId) {
+    this.publicOrderId = createPublicOrderId()
+  }
+  if (!this.shippingAddress?.whatsapp) {
+    this.shippingAddress = {
+      ...(this.shippingAddress || {}),
+      whatsapp: '',
+    }
+  }
+  next()
+})
+
 orderSchema.index({ user: 1, createdAt: -1 })
 orderSchema.index({ status: 1, createdAt: -1 })
 orderSchema.index({ createdAt: -1 })
+orderSchema.index(
+  { publicOrderId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { publicOrderId: { $type: 'string', $gt: '' } },
+  }
+)
 orderSchema.index({ 'shippingAddress.email': 1, createdAt: -1 })
+orderSchema.index({ 'shippingAddress.whatsapp': 1, createdAt: -1 })
 
 module.exports = mongoose.model('Order', orderSchema)

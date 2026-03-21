@@ -8,6 +8,7 @@ import Home from './pages/Home'
 import Contact from './pages/Contact'
 import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
+import TrackOrder from './pages/TrackOrder'
 import Account from './pages/Account'
 import OAuthCallback from './pages/OAuthCallback'
 import NotFound from './pages/NotFound'
@@ -29,7 +30,6 @@ import PaymentSuccess from './pages/checkout/PaymentSuccess'
 import PaymentFailure from './pages/checkout/PaymentFailure'
 import OrderDetail from './pages/OrderDetail'
 import MyOrders from './pages/MyOrders'
-import Wishlist from './pages/Wishlist'
 
 import AdminDashboard from './pages/AdminDashboard'
 import AdminOrders from './pages/AdminOrders'
@@ -65,7 +65,6 @@ const adminNavLinkClass = ({ isActive }) =>
 function AppShell() {
   const location = useLocation()
   const cartCount = useSelector((state) => state.cart.items.reduce((sum, i) => sum + i.qty, 0))
-  const wishlistCount = useSelector((state) => (Array.isArray(state.wishlist?.items) ? state.wishlist.items.length : 0))
   const [user, setUser] = useState(auth.getUser())
   const isAdmin = user?.isAdmin === true
   const isLoggedIn = !!user
@@ -187,18 +186,6 @@ function AppShell() {
               <NavLink to="/products" className={navLinkClass}>
                 Products
               </NavLink>
-              {!isAdmin && isLoggedIn ? (
-                <NavLink to="/wishlist" className={navLinkClass}>
-                  <span className="inline-flex items-center gap-2">
-                    Wishlist
-                    {wishlistCount > 0 && (
-                      <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-gold px-2 py-0.5 text-[10px] font-semibold text-midnight">
-                        {wishlistCount}
-                      </span>
-                    )}
-                  </span>
-                </NavLink>
-              ) : null}
               {!isAdmin ? (
                 <NavLink to="/cart" className={navLinkClass}>
                   <span className="inline-flex items-center gap-2">
@@ -217,6 +204,11 @@ function AppShell() {
                   </NavLink>
                 ) : null
               )}
+              {!isAdmin ? (
+                <NavLink to="/track-order" className={navLinkClass}>
+                  Track Order
+                </NavLink>
+              ) : null}
               {!isAdmin ? (
                 <NavLink to="/contact" className={navLinkClass}>
                   Contact
@@ -260,19 +252,6 @@ function AppShell() {
                       Products
                     </NavLink>
 
-                    {!isAdmin && isLoggedIn ? (
-                      <NavLink to="/wishlist" className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
-                        <span className="inline-flex items-center gap-2">
-                          Wishlist
-                          {wishlistCount > 0 ? (
-                            <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-gold px-2 py-0.5 text-[10px] font-semibold text-midnight">
-                              {wishlistCount}
-                            </span>
-                          ) : null}
-                        </span>
-                      </NavLink>
-                    ) : null}
-
                     {!isAdmin ? (
                       <NavLink to="/cart" className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
                         <span className="inline-flex items-center gap-2">
@@ -287,6 +266,12 @@ function AppShell() {
                     ) : isAdmin ? (
                       <NavLink to="/admin" className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
                         Admin
+                      </NavLink>
+                    ) : null}
+
+                    {!isAdmin ? (
+                      <NavLink to="/track-order" className={mobileNavLinkClass} onClick={() => setMobileOpen(false)}>
+                        Track Order
                       </NavLink>
                     ) : null}
 
@@ -313,6 +298,7 @@ function AppShell() {
         <Route path="/explore" element={<Navigate to="/" replace />} />
         <Route path="/products" element={<Products />} />
         <Route path="/products/:id" element={<ProductDetail />} />
+        <Route path="/track-order" element={<TrackOrder />} />
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/collections/signature" element={<Signature />} />
         <Route path="/collections/heritage" element={<Heritage />} />
@@ -345,18 +331,6 @@ function AppShell() {
               <Navigate to="/admin" replace />
             ) : (
               <Cart />
-            )
-          }
-        />
-        <Route
-          path="/wishlist"
-          element={
-            isAdmin ? (
-              <Navigate to="/admin" replace />
-            ) : isLoggedIn ? (
-              <Wishlist />
-            ) : (
-              <Navigate to="/account" replace />
             )
           }
         />

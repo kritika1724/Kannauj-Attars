@@ -120,7 +120,8 @@ function AdminDashboard() {
                     className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-clay/60 p-4"
                   >
                     <div>
-                      <p className="text-sm font-semibold text-ink">{order._id}</p>
+                      <p className="text-xs uppercase tracking-[0.28em] text-muted">Order ID</p>
+                      <p className="text-sm font-semibold text-ink">{order.publicOrderId || order._id}</p>
                       <p className="mt-1 text-xs text-muted">
                         {order.user?.name
                           ? `${order.user.name} • `

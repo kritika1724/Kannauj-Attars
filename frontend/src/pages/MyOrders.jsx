@@ -64,8 +64,8 @@ function MyOrders() {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs uppercase tracking-[0.28em] text-muted">Order</p>
-                        <p className="mt-1 text-sm font-semibold text-ink">{order._id}</p>
+                        <p className="text-xs uppercase tracking-[0.28em] text-muted">Order ID</p>
+                        <p className="mt-1 text-sm font-semibold text-ink">{order.publicOrderId || order._id}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs uppercase tracking-[0.28em] text-muted">Total</p>
@@ -95,4 +95,3 @@ function MyOrders() {
 }
 
 export default MyOrders
-

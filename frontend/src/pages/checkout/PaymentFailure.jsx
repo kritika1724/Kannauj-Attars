@@ -9,6 +9,7 @@ function PaymentFailure() {
   const [order, setOrder] = useState(() => getLastOrderById(id))
   const [message, setMessage] = useState('Payment was not completed.')
   const user = auth.getUser()
+  const orderId = order?.publicOrderId || id
 
   useEffect(() => {
     const localOrder = getLastOrderById(id)
@@ -42,11 +43,11 @@ function PaymentFailure() {
         amount: rzp.amount,
         currency: rzp.currency,
         name: 'Kannauj Attars',
-        description: `Order ${order._id}`,
+        description: `Order ${order.publicOrderId || order._id}`,
         prefill: {
           name: order?.shippingAddress?.fullName || user?.name || '',
           email: order?.shippingAddress?.email || user?.email || '',
-          contact: order?.shippingAddress?.phone || '',
+          contact: order?.shippingAddress?.whatsapp || order?.shippingAddress?.phone || '',
         },
         themeColor: '#111B3A',
         onSuccess: async (response) => {
@@ -71,7 +72,7 @@ function PaymentFailure() {
         <p className="mt-4 text-sm text-muted">{message}</p>
 
         <div className="mt-6 rounded-2xl border border-slate-200/80 bg-clay/50 p-4 text-sm text-ink">
-          Order: <span className="font-semibold">{id}</span>
+          Order ID: <span className="font-semibold">{orderId}</span>
         </div>
 
         <div className="mt-8 flex flex-wrap gap-3">
@@ -86,11 +87,17 @@ function PaymentFailure() {
           {user ? (
             <Link
               to={`/order/${id}`}
-              className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-emberDark hover:border-gold/40"
-            >
-              View order
-            </Link>
+            className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-emberDark hover:border-gold/40"
+          >
+            View order
+          </Link>
           ) : null}
+          <Link
+            to="/track-order"
+            className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-emberDark hover:border-gold/40"
+          >
+            Track order
+          </Link>
           <Link
             to="/products"
             className="rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-emberDark hover:border-gold/40"

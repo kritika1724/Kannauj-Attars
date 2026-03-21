@@ -26,13 +26,6 @@ function OAuthCallback() {
             return false
           }
         })()
-        const hadPendingWishlist = (() => {
-          try {
-            return !!sessionStorage.getItem('pendingAddToWishlist')
-          } catch {
-            return false
-          }
-        })()
 
         const refreshed = await api.sessionRefresh()
         auth.setSession(refreshed)
@@ -40,8 +33,6 @@ function OAuthCallback() {
           navigate('/admin', { replace: true })
         } else if (hadPending) {
           navigate('/cart', { replace: true })
-        } else if (hadPendingWishlist) {
-          navigate('/wishlist', { replace: true })
         } else {
           navigate('/account/orders', { replace: true })
         }
