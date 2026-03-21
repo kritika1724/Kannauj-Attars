@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, NavLink, Navigate, Link } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, NavLink, Navigate, Link, useLocation } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { useEffect, useState } from 'react'
 import { auth } from './services/api'
@@ -55,13 +55,22 @@ const mobileNavLinkClass = ({ isActive }) =>
       : 'border-slate-200 bg-white text-emberDark hover:border-gold/35 hover:bg-clay/60'
   }`
 
-function App() {
+const adminNavLinkClass = ({ isActive }) =>
+  `rounded-full border px-4 py-2 text-sm font-semibold transition ${
+    isActive
+      ? 'border-gold/40 bg-gold text-midnight'
+      : 'border-white/10 bg-white/5 text-white hover:border-gold/35 hover:bg-white/10'
+  }`
+
+function AppShell() {
+  const location = useLocation()
   const cartCount = useSelector((state) => state.cart.items.reduce((sum, i) => sum + i.qty, 0))
   const wishlistCount = useSelector((state) => (Array.isArray(state.wishlist?.items) ? state.wishlist.items.length : 0))
   const [user, setUser] = useState(auth.getUser())
   const isAdmin = user?.isAdmin === true
   const isLoggedIn = !!user
   const [mobileOpen, setMobileOpen] = useState(false)
+  const inAdminArea = isAdmin && location.pathname.startsWith('/admin')
 
   useEffect(() => {
     const onAuth = () => setUser(auth.getUser())
@@ -97,9 +106,55 @@ function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [mobileOpen])
 
+  useEffect(() => {
+    if (inAdminArea) {
+      setMobileOpen(false)
+    }
+  }, [inAdminArea])
+
   return (
-    <BrowserRouter>
-      <div className="min-h-screen">
+    <div className="min-h-screen">
+      {inAdminArea ? (
+        <header className="sticky top-0 z-20 border-b border-gold/20 bg-[linear-gradient(135deg,#070B18,#111B3A)] shadow-[0_18px_40px_rgba(7,11,24,0.35)]">
+          <div className="ka-container flex flex-wrap items-center justify-between gap-4 py-4">
+            <Link to="/admin" className="flex min-w-0 items-center gap-3" aria-label="Go to admin dashboard">
+              <LogoMark />
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate font-display text-xl tracking-wide text-white sm:text-2xl">
+                  Kannauj Attars <span className="text-gold">Admin</span>
+                </span>
+                <span className="truncate text-xs uppercase tracking-[0.3em] text-white/65">
+                  Dashboard access
+                </span>
+              </div>
+            </Link>
+
+            <nav className="flex flex-wrap items-center gap-2">
+              <NavLink to="/admin" end className={adminNavLinkClass}>
+                Dashboard
+              </NavLink>
+              <NavLink to="/admin/orders" className={adminNavLinkClass}>
+                Orders
+              </NavLink>
+              <NavLink to="/admin/products" className={adminNavLinkClass}>
+                Products
+              </NavLink>
+              <NavLink to="/admin/media" className={adminNavLinkClass}>
+                Website Images
+              </NavLink>
+              <NavLink to="/admin/contacts" className={adminNavLinkClass}>
+                Contacts
+              </NavLink>
+              <Link
+                to="/"
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-gold/35 hover:bg-white/10"
+              >
+                View site
+              </Link>
+            </nav>
+          </div>
+        </header>
+      ) : (
         <header className="sticky top-0 z-20 relative border-b border-gold/20 bg-white/90 shadow-[0_18px_40px_rgba(17,27,58,0.12)] backdrop-blur-xl after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-[linear-gradient(90deg,rgba(201,162,74,0),rgba(201,162,74,0.75),rgba(201,162,74,0))] after:content-['']">
           <div className="ka-container flex items-center justify-between gap-4 py-4">
             <Link
@@ -250,179 +305,187 @@ function App() {
             </>
           ) : null}
         </header>
+      )}
 
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<Navigate to="/" replace />} />
-          <Route path="/explore" element={<Navigate to="/" replace />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/collections/signature" element={<Signature />} />
-          <Route path="/collections/heritage" element={<Heritage />} />
-          <Route path="/custom-blends" element={<CustomBlends />} />
-          <Route path="/create-blend" element={<CreateBlend />} />
-          <Route path="/discovery-quiz" element={<DiscoveryQuiz />} />
-          <Route path="/knowledge" element={<Knowledge />} />
-          <Route path="/knowledge/:slug" element={<KnowledgeArticle />} />
-          <Route path="/ceo" element={<Ceo />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/account" element={<Account />} />
-          <Route path="/oauth/callback" element={<OAuthCallback />} />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<Navigate to="/" replace />} />
+        <Route path="/explore" element={<Navigate to="/" replace />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/products/:id" element={<ProductDetail />} />
+        <Route path="/gallery" element={<Gallery />} />
+        <Route path="/collections/signature" element={<Signature />} />
+        <Route path="/collections/heritage" element={<Heritage />} />
+        <Route path="/custom-blends" element={<CustomBlends />} />
+        <Route path="/create-blend" element={<CreateBlend />} />
+        <Route path="/discovery-quiz" element={<DiscoveryQuiz />} />
+        <Route path="/knowledge" element={<Knowledge />} />
+        <Route path="/knowledge/:slug" element={<KnowledgeArticle />} />
+        <Route path="/ceo" element={<Ceo />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/account" element={<Account />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
 
-          <Route
-            path="/account/orders"
-            element={
-              isAdmin ? (
-                <Navigate to="/admin/orders" replace />
-              ) : (
-                <ProtectedRoute>
-                  <MyOrders />
-                </ProtectedRoute>
-              )
-            }
-          />
-          <Route
-            path="/cart"
-            element={
-              isAdmin ? (
-                <Navigate to="/admin" replace />
-              ) : (
-                <Cart />
-              )
-            }
-          />
-          <Route
-            path="/wishlist"
-            element={
-              isAdmin ? (
-                <Navigate to="/admin" replace />
-              ) : isLoggedIn ? (
-                <Wishlist />
-              ) : (
-                <Navigate to="/account" replace />
-              )
-            }
-          />
-          <Route
-            path="/checkout/shipping"
-            element={
-              isAdmin ? (
-                <Navigate to="/admin" replace />
-              ) : (
-                <Shipping />
-              )
-            }
-          />
-          <Route
-            path="/checkout/payment"
-            element={
-              isAdmin ? (
-                <Navigate to="/admin" replace />
-              ) : (
-                <Payment />
-              )
-            }
-          />
-          <Route
-            path="/checkout/place-order"
-            element={
-              isAdmin ? (
-                <Navigate to="/admin" replace />
-              ) : (
-                <PlaceOrder />
-              )
-            }
-          />
-          <Route
-            path="/checkout/success/:id"
-            element={
-              isAdmin ? (
-                <Navigate to="/admin/orders" replace />
-              ) : (
-                <PaymentSuccess />
-              )
-            }
-          />
-          <Route
-            path="/checkout/failure/:id"
-            element={
-              isAdmin ? (
-                <Navigate to="/admin/orders" replace />
-              ) : (
-                <PaymentFailure />
-              )
-            }
-          />
-          <Route
-            path="/order/:id"
-            element={
+        <Route
+          path="/account/orders"
+          element={
+            isAdmin ? (
+              <Navigate to="/admin/orders" replace />
+            ) : (
               <ProtectedRoute>
-                <OrderDetail />
+                <MyOrders />
               </ProtectedRoute>
-            }
-          />
+            )
+          }
+        />
+        <Route
+          path="/cart"
+          element={
+            isAdmin ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Cart />
+            )
+          }
+        />
+        <Route
+          path="/wishlist"
+          element={
+            isAdmin ? (
+              <Navigate to="/admin" replace />
+            ) : isLoggedIn ? (
+              <Wishlist />
+            ) : (
+              <Navigate to="/account" replace />
+            )
+          }
+        />
+        <Route
+          path="/checkout/shipping"
+          element={
+            isAdmin ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Shipping />
+            )
+          }
+        />
+        <Route
+          path="/checkout/payment"
+          element={
+            isAdmin ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <Payment />
+            )
+          }
+        />
+        <Route
+          path="/checkout/place-order"
+          element={
+            isAdmin ? (
+              <Navigate to="/admin" replace />
+            ) : (
+              <PlaceOrder />
+            )
+          }
+        />
+        <Route
+          path="/checkout/success/:id"
+          element={
+            isAdmin ? (
+              <Navigate to="/admin/orders" replace />
+            ) : (
+              <PaymentSuccess />
+            )
+          }
+        />
+        <Route
+          path="/checkout/failure/:id"
+          element={
+            isAdmin ? (
+              <Navigate to="/admin/orders" replace />
+            ) : (
+              <PaymentFailure />
+            )
+          }
+        />
+        <Route
+          path="/order/:id"
+          element={
+            <ProtectedRoute>
+              <OrderDetail />
+            </ProtectedRoute>
+          }
+        />
 
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/orders"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminOrders />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/products"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminProducts />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/products/new"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminProductForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/products/:id"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminProductForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/media"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminMedia />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/contacts"
-            element={
-              <ProtectedRoute adminOnly>
-                <AdminContacts />
-              </ProtectedRoute>
-            }
-          />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminProducts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/products/new"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminProductForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/products/:id"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminProductForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/media"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminMedia />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/contacts"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminContacts />
+            </ProtectedRoute>
+          }
+        />
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </div>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
     </BrowserRouter>
   )
 }

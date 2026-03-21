@@ -64,6 +64,28 @@ app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        imgSrc: [
+          "'self'",
+          'data:',
+          'blob:',
+          'https://res.cloudinary.com',
+          'https://*.cloudinary.com',
+        ],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://checkout.razorpay.com'],
+        frameSrc: ["'self'", 'https://checkout.razorpay.com', 'https://api.razorpay.com'],
+        connectSrc: [
+          "'self'",
+          'https://checkout.razorpay.com',
+          'https://api.razorpay.com',
+          'https://api.cloudinary.com',
+          'https://res.cloudinary.com',
+          'https://*.cloudinary.com',
+        ],
+      },
+    },
   })
 )
 app.use(morgan('dev'))

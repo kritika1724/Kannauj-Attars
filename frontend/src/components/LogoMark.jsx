@@ -29,12 +29,11 @@ function LogoMark({ className = '' }) {
     >
       <div className="absolute inset-1 rounded-full bg-[radial-gradient(circle_at_top,rgba(201,162,74,0.26),rgba(255,255,255,0.94))]" />
       <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_180deg,rgba(201,162,74,0.08),rgba(17,27,58,0.06),rgba(201,162,74,0.10))] opacity-60" />
-      <span className="relative font-display text-[12px] tracking-[0.22em] text-ink">
-        K<span className="mx-0.5 text-gold">•</span>A
+      <span className="relative font-display text-[12px] tracking-[0.18em] text-ink">
+        K<span className="mx-0.5 text-gold">/</span>A
       </span>
     </div>
   )
 }
 
 export default LogoMark
-

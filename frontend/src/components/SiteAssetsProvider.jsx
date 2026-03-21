@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api } from '../services/api'
+import { toAssetUrl } from '../utils/media'
 
 const SiteAssetsContext = createContext({
   assets: {},
@@ -31,6 +32,19 @@ export function SiteAssetsProvider({ children }) {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    const favicon = document.getElementById('app-favicon')
+    if (!favicon) return
+
+    const logoUrl = assets?.['site.logo']
+      ? toAssetUrl(assets['site.logo'], import.meta.env.VITE_API_ASSET)
+      : '/favicon.svg?v=ka-mark'
+
+    favicon.setAttribute('href', logoUrl)
+  }, [assets])
 
   // Keep admin-media page and inline upload overlays in sync.
   useEffect(() => {
