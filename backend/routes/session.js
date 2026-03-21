@@ -4,6 +4,7 @@ const User = require('../models/User')
 const { isAdminEmail } = require('../config/admin')
 const { getRefreshCookieOptions } = require('../config/cookies')
 const { signAccessToken, signRefreshToken, hashToken, refreshExpiryDate } = require('../config/tokens')
+const asyncHandler = require('../utils/asyncHandler')
 
 const router = express.Router()
 
@@ -31,7 +32,7 @@ const userPayload = (user) => {
 }
 
 // Refresh access token using httpOnly refresh cookie (rotates refresh token)
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', asyncHandler(async (req, res) => {
   const token = req.cookies?.[COOKIE_NAME]
   if (!token) return res.status(401).json({ message: 'Not authorized' })
 
@@ -78,10 +79,10 @@ router.post('/refresh', async (req, res) => {
 
   const access = signAccessToken(user._id)
   return res.json({ token: access, user: userPayload(user) })
-})
+}))
 
 // Logout: revoke refresh token and clear cookie
-router.post('/logout', async (req, res) => {
+router.post('/logout', asyncHandler(async (req, res) => {
   const token = req.cookies?.[COOKIE_NAME]
 
   if (token) {
@@ -102,7 +103,6 @@ router.post('/logout', async (req, res) => {
 
   clearCookie(res)
   return res.json({ message: 'Logged out' })
-})
+}))
 
 module.exports = { router, COOKIE_NAME, setCookie, clearCookie, userPayload }
-

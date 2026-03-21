@@ -1,97 +1,110 @@
 const express = require('express')
 const Product = require('../models/Product')
 const { protect, adminOnly } = require('../middleware/auth')
+const asyncHandler = require('../utils/asyncHandler')
+const escapeRegex = require('../utils/escapeRegex')
 
 const router = express.Router()
 
-router.get('/', async (req, res) => {
-  const page = Number(req.query.page) || 1
-  const limit = Math.min(Number(req.query.limit) || 12, 50)
-  const skip = (page - 1) * limit
+router.get(
+  '/',
+  asyncHandler(async (req, res) => {
+    const page = Math.max(1, Number(req.query.page) || 1)
+    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 50)
+    const skip = (page - 1) * limit
 
-  const keyword = (req.query.keyword || '').trim()
-  const category = (req.query.category || '').trim()
-  const buyer = (req.query.buyer || '').trim() // "personal" | "industrial"
-  const purposeRaw = (req.query.purpose || '').trim() // tag id or comma-separated list
-  const familyRaw = (req.query.family || '').trim() // tag id or comma-separated list
-  const bestSeller = (req.query.bestSeller || '').toString().trim()
-  const minPrice = req.query.minPrice !== undefined ? Number(req.query.minPrice) : undefined
-  const maxPrice = req.query.maxPrice !== undefined ? Number(req.query.maxPrice) : undefined
-  const sort = (req.query.sort || 'newest').trim()
+    const keyword = (req.query.keyword || '').trim()
+    const category = (req.query.category || '').trim()
+    const buyer = (req.query.buyer || '').trim()
+    const purposeRaw = (req.query.purpose || '').trim()
+    const familyRaw = (req.query.family || '').trim()
+    const bestSeller = (req.query.bestSeller || '').toString().trim()
+    const minPrice = req.query.minPrice !== undefined ? Number(req.query.minPrice) : undefined
+    const maxPrice = req.query.maxPrice !== undefined ? Number(req.query.maxPrice) : undefined
+    const sort = (req.query.sort || 'newest').trim()
 
-  const filter = {}
-  if (keyword) {
-    filter.$or = [
-      { name: { $regex: keyword, $options: 'i' } },
-      { description: { $regex: keyword, $options: 'i' } },
-    ]
-  }
-  if (category) {
-    filter.category = category
-  }
-  if (buyer === 'personal') {
-    filter.buyerType = { $in: ['personal', 'both'] }
-  } else if (buyer === 'industrial') {
-    filter.buyerType = { $in: ['industrial', 'both'] }
-  }
-  const purposes = purposeRaw
-    ? purposeRaw
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : []
-  const families = familyRaw
-    ? familyRaw
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : []
+    const filter = {}
+    if (keyword) {
+      const safeKeyword = escapeRegex(keyword)
+      filter.$or = [
+        { name: { $regex: safeKeyword, $options: 'i' } },
+        { description: { $regex: safeKeyword, $options: 'i' } },
+      ]
+    }
+    if (category) {
+      filter.category = category
+    }
+    if (buyer === 'personal') {
+      filter.buyerType = { $in: ['personal', 'both'] }
+    } else if (buyer === 'industrial') {
+      filter.buyerType = { $in: ['industrial', 'both'] }
+    }
 
-  if (purposes.length) {
-    filter.purposeTags = { $in: purposes }
-  }
-  if (families.length) {
-    filter.familyTags = { $in: families }
-  }
-  if (bestSeller && ['1', 'true', 'yes', 'on'].includes(bestSeller.toLowerCase())) {
-    filter.isBestSeller = true
-  }
-  if (minPrice !== undefined || maxPrice !== undefined) {
-    filter.price = {}
-    if (minPrice !== undefined && !Number.isNaN(minPrice)) filter.price.$gte = minPrice
-    if (maxPrice !== undefined && !Number.isNaN(maxPrice)) filter.price.$lte = maxPrice
-  }
+    const purposes = purposeRaw
+      ? purposeRaw
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : []
+    const families = familyRaw
+      ? familyRaw
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : []
 
-  const sortMap = {
-    newest: { createdAt: -1 },
-    price_asc: { price: 1 },
-    price_desc: { price: -1 },
-    rating_desc: { rating: -1 },
-    name_asc: { name: 1 },
-  }
+    if (purposes.length) filter.purposeTags = { $in: purposes }
+    if (families.length) filter.familyTags = { $in: families }
+    if (bestSeller && ['1', 'true', 'yes', 'on'].includes(bestSeller.toLowerCase())) {
+      filter.isBestSeller = true
+    }
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      filter.price = {}
+      if (minPrice !== undefined && !Number.isNaN(minPrice)) filter.price.$gte = minPrice
+      if (maxPrice !== undefined && !Number.isNaN(maxPrice)) filter.price.$lte = maxPrice
+    }
 
-  const sortObj = sortMap[sort] || sortMap.newest
+    const sortMap = {
+      newest: { createdAt: -1 },
+      price_asc: { price: 1 },
+      price_desc: { price: -1 },
+      rating_desc: { rating: -1 },
+      name_asc: { name: 1 },
+    }
 
-  const total = await Product.countDocuments(filter)
-  const products = await Product.find(filter).sort(sortObj).skip(skip).limit(limit)
+    const sortObj = sortMap[sort] || sortMap.newest
 
-  res.json({
-    products,
-    page,
-    pages: Math.ceil(total / limit),
-    total,
+    const [total, products] = await Promise.all([
+      Product.countDocuments(filter),
+      Product.find(filter)
+        .select('-reviews')
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ])
+
+    res.json({
+      products,
+      page,
+      pages: Math.max(1, Math.ceil(total / limit)),
+      total,
+    })
   })
-})
+)
 
-router.get('/:id', async (req, res) => {
-  const product = await Product.findById(req.params.id)
-  if (!product) {
-    return res.status(404).json({ message: 'Product not found' })
-  }
-  res.json(product)
-})
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const product = await Product.findById(req.params.id).lean()
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' })
+    }
+    res.json(product)
+  })
+)
 
-router.post('/', protect, adminOnly, async (req, res) => {
+router.post('/', protect, adminOnly, asyncHandler(async (req, res) => {
   const {
     name,
     description,
@@ -127,9 +140,9 @@ router.post('/', protect, adminOnly, async (req, res) => {
   })
 
   res.status(201).json(product)
-})
+}))
 
-router.put('/:id', protect, adminOnly, async (req, res) => {
+router.put('/:id', protect, adminOnly, asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id)
   if (!product) {
     return res.status(404).json({ message: 'Product not found' })
@@ -161,18 +174,18 @@ router.put('/:id', protect, adminOnly, async (req, res) => {
 
   const updated = await product.save()
   res.json(updated)
-})
+}))
 
-router.delete('/:id', protect, adminOnly, async (req, res) => {
+router.delete('/:id', protect, adminOnly, asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id)
   if (!product) {
     return res.status(404).json({ message: 'Product not found' })
   }
   await product.deleteOne()
   res.json({ message: 'Product deleted' })
-})
+}))
 
-router.post('/:id/reviews', protect, async (req, res) => {
+router.post('/:id/reviews', protect, asyncHandler(async (req, res) => {
   if (req.user?.isAdmin === true) {
     return res.status(403).json({ message: 'Admins cannot submit reviews' })
   }
@@ -208,9 +221,9 @@ router.post('/:id/reviews', protect, async (req, res) => {
 
   await product.save()
   res.status(201).json({ message: 'Review added' })
-})
+}))
 
-router.delete('/:id/reviews/:reviewId', protect, adminOnly, async (req, res) => {
+router.delete('/:id/reviews/:reviewId', protect, adminOnly, asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id)
   if (!product) {
     return res.status(404).json({ message: 'Product not found' })
@@ -232,6 +245,6 @@ router.delete('/:id/reviews/:reviewId', protect, adminOnly, async (req, res) => 
 
   await product.save()
   res.json({ message: 'Review removed' })
-})
+}))
 
 module.exports = router

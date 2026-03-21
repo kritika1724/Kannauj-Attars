@@ -32,7 +32,7 @@ dotenv.config({ path: path.join(__dirname, '.env') })
 const app = express()
 app.set('trust proxy', 1)
 app.disable('x-powered-by')
-app.use(express.json())
+app.use(express.json({ limit: '1mb' }))
 if (cookieParser) {
   app.use(cookieParser())
 } else {
@@ -88,7 +88,7 @@ app.use(
     },
   })
 )
-app.use(morgan('dev'))
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'tiny' : 'dev'))
 
 app.use(
   rateLimit({
@@ -144,7 +144,13 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/contact', contactRoutes)
 app.use('/api/gallery', galleryRoutes)
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+app.use(
+  '/uploads',
+  express.static(path.join(__dirname, 'uploads'), {
+    maxAge: '30d',
+    immutable: true,
+  })
+)
 
 // Serve the React app in production (single deploy).
 if (process.env.NODE_ENV === 'production') {
@@ -166,7 +172,24 @@ app.use('/api', (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err)
-  res.status(500).json({ message: err?.message || 'Server error' })
+
+  if (err?.name === 'ValidationError') {
+    return res.status(400).json({ message: err.message || 'Validation failed' })
+  }
+
+  if (err?.name === 'CastError') {
+    return res.status(400).json({ message: 'Invalid id or query value' })
+  }
+
+  if (err?.code === 11000) {
+    return res.status(409).json({ message: 'Duplicate value already exists' })
+  }
+
+  if (err?.name === 'JsonWebTokenError' || err?.name === 'TokenExpiredError') {
+    return res.status(401).json({ message: 'Token invalid' })
+  }
+
+  return res.status(err?.statusCode || 500).json({ message: err?.message || 'Server error' })
 })
 
 const start = async () => {

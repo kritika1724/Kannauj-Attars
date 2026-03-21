@@ -10,5 +10,6 @@ const gallerySectionSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
-module.exports = mongoose.model('GallerySection', gallerySectionSchema)
+gallerySectionSchema.index({ isActive: 1, order: 1, createdAt: 1 })
 
+module.exports = mongoose.model('GallerySection', gallerySectionSchema)

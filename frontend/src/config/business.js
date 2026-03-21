@@ -1,7 +1,9 @@
 export const BUSINESS = {
   name: 'Kannauj Attars',
   since: 1998,
-  email: 'kannaujattars7@gmail.com',
+  email: 'kannaujattars@yahoo.com',
+  emails: ['kannaujattars@yahoo.com', 'kannaujattars7@gmail.com'],
+  phones: ['+91-9415124521', '+91-7007627057'],
   founder: 'Mr. Pawan Trivedi',
   founderTitle:
     'Founder, Kannauj Attars (since 1998) | President, The Attars & Perfumers Association Kannauj',
@@ -20,7 +22,7 @@ export const BUSINESS = {
   offices: {
     kannauj: {
       label: 'Kannauj Office',
-      address: 'Maya Bhawan, Moh-Holi, Kannauj.',
+      address: 'Maya Bhawan, Mohalla Holi, Kannauj - 209725 (U.P.), India.',
     },
     mumbai: {
       label: 'Mumbai Office',

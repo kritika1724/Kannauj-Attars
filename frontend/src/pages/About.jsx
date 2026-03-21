@@ -105,11 +105,17 @@ function About() {
               </div>
             ) : null}
 
-            <div className="mt-6 flex items-center gap-3 text-sm font-semibold text-emberDark">
-              <FiMail size={18} />
-              <a href={`mailto:${BUSINESS.email}`} className="hover:text-ink">
-                {BUSINESS.email}
-              </a>
+            <div className="mt-6 space-y-3 text-sm font-semibold text-emberDark">
+              <div className="flex flex-wrap items-center gap-3">
+                <FiMail size={18} />
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {(BUSINESS.emails || [BUSINESS.email]).map((email) => (
+                    <a key={email} href={`mailto:${email}`} className="hover:text-ink">
+                      {email}
+                    </a>
+                  ))}
+                </div>
+              </div>
             </div>
             <Link
               to="/ceo"

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiDroplet, FiWind, FiFeather, FiUser, FiMapPin, FiMail, FiPackage, FiAward } from 'react-icons/fi'
+import { FiDroplet, FiWind, FiFeather, FiUser, FiMapPin, FiMail, FiPhone, FiPackage, FiAward } from 'react-icons/fi'
 import AdminAssetImage from '../components/AdminAssetImage'
 import { auth } from '../services/api'
 import RecentlyViewedStrip from '../components/RecentlyViewedStrip'
@@ -341,11 +341,27 @@ function Home() {
                 </div>
               ) : null}
 
-              <div className="mt-6 flex items-center gap-3 text-sm font-semibold text-emberDark">
-                <FiMail size={18} />
-                <a href={`mailto:${BUSINESS.email}`} className="hover:text-ink">
-                  {BUSINESS.email}
-                </a>
+              <div className="mt-6 space-y-3 text-sm font-semibold text-emberDark">
+                <div className="flex flex-wrap items-center gap-3">
+                  <FiMail size={18} />
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {(BUSINESS.emails || [BUSINESS.email]).map((email) => (
+                      <a key={email} href={`mailto:${email}`} className="hover:text-ink">
+                        {email}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <FiPhone size={18} />
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {(BUSINESS.phones || []).map((phone) => (
+                      <a key={phone} href={`tel:${phone.replace(/\s+/g, '')}`} className="hover:text-ink">
+                        {phone}
+                      </a>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

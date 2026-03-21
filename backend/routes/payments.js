@@ -16,7 +16,9 @@ const mustGetRazorpayConfig = () => {
 }
 
 const getOrderOr404 = async (orderId) => {
-  const order = await Order.findById(orderId).populate('user', 'email')
+  const order = await Order.findById(orderId)
+    .select('user shippingAddress.email paymentMethod totalPrice isPaid status paymentResult paidAt')
+    .populate('user', 'email')
   if (!order) {
     const err = new Error('Order not found')
     err.statusCode = 404

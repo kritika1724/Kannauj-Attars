@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { FiMail, FiMapPin, FiAward } from 'react-icons/fi'
+import { FiMail, FiMapPin, FiPhone, FiAward } from 'react-icons/fi'
 import AdminAssetImage from '../components/AdminAssetImage'
 import { BUSINESS } from '../config/business'
 
@@ -66,9 +66,29 @@ function Ceo() {
                   <FiMail className="mt-0.5 text-ember" size={18} />
                   <div>
                     <p className="text-sm font-semibold text-ink">Email</p>
-                    <a href={`mailto:${BUSINESS.email}`} className="mt-1 inline-flex text-sm text-muted hover:text-ink">
-                      {BUSINESS.email}
-                    </a>
+                    <div className="mt-1 space-y-1">
+                      {(BUSINESS.emails || [BUSINESS.email]).map((email) => (
+                        <a key={email} href={`mailto:${email}`} className="block text-sm text-muted hover:text-ink">
+                          {email}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200/80 bg-clay/60 p-4">
+                <div className="flex items-start gap-3">
+                  <FiPhone className="mt-0.5 text-ember" size={18} />
+                  <div>
+                    <p className="text-sm font-semibold text-ink">Mobile</p>
+                    <div className="mt-1 space-y-1">
+                      {(BUSINESS.phones || []).map((phone) => (
+                        <a key={phone} href={`tel:${phone.replace(/\s+/g, '')}`} className="block text-sm text-muted hover:text-ink">
+                          {phone}
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

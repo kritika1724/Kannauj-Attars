@@ -20,7 +20,6 @@ function LogoMark({ className = '' }) {
     )
   }
 
-  // Fallback: premium seal-style monogram (until you upload a real logo)
   return (
     <div
       className={`relative grid h-11 w-11 place-items-center rounded-full border border-gold/30 bg-white shadow-sm ${className}`}

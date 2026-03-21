@@ -2,6 +2,7 @@ const express = require('express')
 const Order = require('../models/Order')
 const Product = require('../models/Product')
 const { protect, optionalProtect, adminOnly } = require('../middleware/auth')
+const asyncHandler = require('../utils/asyncHandler')
 
 const router = express.Router()
 
@@ -19,203 +20,256 @@ const isBulkPack = (label) => {
   return grams !== null && Number.isFinite(grams) && grams >= 1000
 }
 
+const canAccessOrder = (reqUser, orderUserId) => {
+  if (!reqUser) return false
+  if (reqUser.isAdmin === true) return true
+  if (!orderUserId) return false
+  return String(orderUserId) === String(reqUser._id)
+}
+
 // Create order
-router.post('/', optionalProtect, async (req, res) => {
-  if (req.user?.isAdmin === true) {
-    return res.status(403).json({ message: 'Admins cannot place orders' })
-  }
+router.post(
+  '/',
+  optionalProtect,
+  asyncHandler(async (req, res) => {
+    if (req.user?.isAdmin === true) {
+      return res.status(403).json({ message: 'Admins cannot place orders' })
+    }
 
-  const { orderItems, shippingAddress, paymentMethod } = req.body
+    const { orderItems, shippingAddress, paymentMethod } = req.body
 
-  if (!Array.isArray(orderItems) || orderItems.length === 0) {
-    return res.status(400).json({ message: 'Order items are required' })
-  }
+    if (!Array.isArray(orderItems) || orderItems.length === 0) {
+      return res.status(400).json({ message: 'Order items are required' })
+    }
 
-  if (!shippingAddress?.fullName || !shippingAddress?.email || !shippingAddress?.phone) {
-    return res.status(400).json({ message: 'Name, email, and phone are required' })
-  }
+    if (!shippingAddress?.fullName || !shippingAddress?.email || !shippingAddress?.phone) {
+      return res.status(400).json({ message: 'Name, email, and phone are required' })
+    }
 
-  // Recalculate prices from DB (don’t trust client pricing)
-  const productIds = orderItems.map((item) => item.product)
-  const products = await Product.find({ _id: { $in: productIds } })
+    const productIds = [...new Set(orderItems.map((item) => String(item.product || '')).filter(Boolean))]
+    const products = await Product.find({ _id: { $in: productIds } })
+      .select('name price packs images')
+      .lean()
 
-  let normalizedItems
-  try {
-    normalizedItems = orderItems.map((item) => {
-      const product = products.find((p) => p._id.toString() === item.product)
-      if (!product) {
-        throw new Error('Invalid product in order')
-      }
+    const productMap = new Map(products.map((product) => [String(product._id), product]))
 
-      const requestedPackLabel = (item.packLabel || '').trim()
-      const pack =
-        requestedPackLabel && Array.isArray(product.packs)
-          ? product.packs.find((p) => (p.label || '').trim() === requestedPackLabel)
-          : null
-
-      if (Array.isArray(product.packs) && product.packs.length > 0) {
-        if (!requestedPackLabel) {
-          throw new Error(`Pack size is required for product: ${product.name}`)
+    let normalizedItems
+    try {
+      normalizedItems = orderItems.map((item) => {
+        const product = productMap.get(String(item.product))
+        if (!product) {
+          throw new Error('Invalid product in order')
         }
-        if (!pack) {
-          throw new Error(`Invalid pack size for product: ${product.name}`)
+
+        const requestedPackLabel = String(item.packLabel || '').trim()
+        const pack =
+          requestedPackLabel && Array.isArray(product.packs)
+            ? product.packs.find((p) => (p.label || '').trim() === requestedPackLabel)
+            : null
+
+        if (Array.isArray(product.packs) && product.packs.length > 0) {
+          if (!requestedPackLabel) {
+            throw new Error(`Pack size is required for product: ${product.name}`)
+          }
+          if (!pack) {
+            throw new Error(`Invalid pack size for product: ${product.name}`)
+          }
         }
-      }
 
-      // Enforce bulk inquiry flow: large pack sizes should not be checkout-able.
-      const selectedLabel = pack ? pack.label : requestedPackLabel || ''
-      if (selectedLabel && isBulkPack(selectedLabel)) {
-        throw new Error(`Bulk pack size selected for ${product.name}. Please contact us for bulk/industrial orders.`)
-      }
+        const selectedLabel = pack ? pack.label : requestedPackLabel || ''
+        if (selectedLabel && isBulkPack(selectedLabel)) {
+          throw new Error(`Bulk pack size selected for ${product.name}. Please contact us for bulk/industrial orders.`)
+        }
 
-      return {
-        product: product._id,
-        name: product.name,
-        qty: Number(item.qty || 1),
-        price: pack ? pack.price : product.price,
-        image: product.images?.[0] || '',
-        pack: { label: pack ? pack.label : requestedPackLabel || '' },
-      }
+        const qty = Math.max(1, Number(item.qty || 1))
+
+        return {
+          product: product._id,
+          name: product.name,
+          qty,
+          price: pack ? pack.price : product.price,
+          image: product.images?.[0] || '',
+          pack: { label: pack ? pack.label : requestedPackLabel || '' },
+        }
+      })
+    } catch (e) {
+      return res.status(400).json({ message: e.message || 'Invalid order items' })
+    }
+
+    const itemsPrice = normalizedItems.reduce((sum, item) => sum + item.qty * item.price, 0)
+    const shippingPrice = 0
+    const taxPrice = 0
+    const totalPrice = itemsPrice + shippingPrice + taxPrice
+
+    const method = String(paymentMethod || 'COD').trim().toUpperCase()
+    const COD_LIMIT = Number(process.env.COD_LIMIT || 2000)
+    if (method === 'COD' && Number.isFinite(COD_LIMIT) && totalPrice > COD_LIMIT) {
+      return res.status(400).json({
+        message: `Cash on Delivery is not available for orders above ₹${COD_LIMIT}. Please choose online payment.`,
+      })
+    }
+
+    const order = await Order.create({
+      user: req.user?._id || null,
+      orderItems: normalizedItems,
+      shippingAddress: {
+        ...shippingAddress,
+        email: String(shippingAddress.email || '').trim().toLowerCase(),
+      },
+      paymentMethod: method || 'COD',
+      itemsPrice,
+      shippingPrice,
+      taxPrice,
+      totalPrice,
+      status: 'pending',
     })
-  } catch (e) {
-    return res.status(400).json({ message: e.message || 'Invalid order items' })
-  }
 
-  const itemsPrice = normalizedItems.reduce((sum, item) => sum + item.qty * item.price, 0)
-  const shippingPrice = 0
-  const taxPrice = 0
-  const totalPrice = itemsPrice + shippingPrice + taxPrice
-
-  const method = String(paymentMethod || 'COD').trim().toUpperCase()
-  const COD_LIMIT = Number(process.env.COD_LIMIT || 2000)
-  if (method === 'COD' && Number.isFinite(COD_LIMIT) && totalPrice > COD_LIMIT) {
-    return res.status(400).json({
-      message: `Cash on Delivery is not available for orders above ₹${COD_LIMIT}. Please choose online payment.`,
-    })
-  }
-
-  const order = await Order.create({
-    user: req.user?._id || null,
-    orderItems: normalizedItems,
-    shippingAddress: {
-      ...shippingAddress,
-      email: String(shippingAddress.email || '').trim().toLowerCase(),
-    },
-    paymentMethod: method || 'COD',
-    itemsPrice,
-    shippingPrice,
-    taxPrice,
-    totalPrice,
-    status: 'pending',
+    res.status(201).json(order)
   })
-
-  res.status(201).json(order)
-})
+)
 
 // Get my orders
-router.get('/mine', protect, async (req, res) => {
-  const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 })
-  res.json(orders)
-})
+router.get(
+  '/mine',
+  protect,
+  asyncHandler(async (req, res) => {
+    const orders = await Order.find({ user: req.user._id })
+      .select('_id totalPrice createdAt status')
+      .sort({ createdAt: -1 })
+      .lean()
+    res.json(orders)
+  })
+)
 
 // Get all orders (admin)
-router.get('/', protect, adminOnly, async (req, res) => {
-  const orders = await Order.find({}).populate('user', 'name email').sort({ createdAt: -1 })
-  res.json(orders)
-})
+router.get(
+  '/',
+  protect,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    const orders = await Order.find({})
+      .select('_id user shippingAddress.fullName shippingAddress.email totalPrice paymentMethod status createdAt')
+      .populate('user', 'name email')
+      .sort({ createdAt: -1 })
+      .lean()
+    res.json(orders)
+  })
+)
 
 // Get order by id
-router.get('/:id', protect, async (req, res) => {
-  const order = await Order.findById(req.params.id).populate('user', 'name email')
-  if (!order) {
-    return res.status(404).json({ message: 'Order not found' })
-  }
+router.get(
+  '/:id',
+  protect,
+  asyncHandler(async (req, res) => {
+    const order = await Order.findById(req.params.id).populate('user', 'name email').lean()
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' })
+    }
 
-  // User can only see own orders unless admin
-  if (!req.user.isAdmin && order.user._id.toString() !== req.user._id.toString()) {
-    return res.status(403).json({ message: 'Not authorized' })
-  }
+    if (!canAccessOrder(req.user, order.user?._id || order.user)) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
 
-  res.json(order)
-})
+    res.json(order)
+  })
+)
 
 // Mark order as paid
-router.put('/:id/pay', protect, async (req, res) => {
-  const order = await Order.findById(req.params.id)
-  if (!order) {
-    return res.status(404).json({ message: 'Order not found' })
-  }
+router.put(
+  '/:id/pay',
+  protect,
+  asyncHandler(async (req, res) => {
+    const order = await Order.findById(req.params.id)
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' })
+    }
 
-  if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
-    return res.status(403).json({ message: 'Not authorized' })
-  }
+    if (!canAccessOrder(req.user, order.user)) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
 
-  order.isPaid = true
-  order.paidAt = new Date()
-  order.paymentResult = {
-    id: req.body?.id || 'manual',
-    status: req.body?.status || 'paid',
-    email: req.body?.email || req.user.email,
-  }
-  if (order.status === 'pending') {
-    order.status = 'confirmed'
-  }
+    order.isPaid = true
+    order.paidAt = new Date()
+    order.paymentResult = {
+      id: req.body?.id || 'manual',
+      status: req.body?.status || 'paid',
+      email: req.body?.email || req.user.email,
+    }
+    if (order.status === 'pending') {
+      order.status = 'confirmed'
+    }
 
-  const updated = await order.save()
-  res.json(updated)
-})
+    const updated = await order.save()
+    res.json(updated)
+  })
+)
 
 // Admin: update status
-router.put('/:id/status', protect, adminOnly, async (req, res) => {
-  const { status } = req.body
-  const allowed = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']
+router.put(
+  '/:id/status',
+  protect,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    const { status } = req.body
+    const allowed = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled']
 
-  if (!allowed.includes(status)) {
-    return res.status(400).json({ message: 'Invalid status' })
-  }
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' })
+    }
 
-  const order = await Order.findById(req.params.id)
-  if (!order) {
-    return res.status(404).json({ message: 'Order not found' })
-  }
+    const order = await Order.findById(req.params.id)
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' })
+    }
 
-  order.status = status
-  if (status === 'delivered') {
-    order.isDelivered = true
-    order.deliveredAt = new Date()
-  }
+    order.status = status
+    if (status === 'delivered') {
+      order.isDelivered = true
+      order.deliveredAt = new Date()
+    } else {
+      order.isDelivered = false
+      order.deliveredAt = null
+    }
 
-  const updated = await order.save()
-  res.json(updated)
-})
+    if (status === 'cancelled' && !order.cancelledAt) {
+      order.cancelledAt = new Date()
+    }
+
+    const updated = await order.save()
+    res.json(updated)
+  })
+)
 
 // User: cancel own order (only before shipping)
-router.put('/:id/cancel', protect, async (req, res) => {
-  const order = await Order.findById(req.params.id)
-  if (!order) {
-    return res.status(404).json({ message: 'Order not found' })
-  }
+router.put(
+  '/:id/cancel',
+  protect,
+  asyncHandler(async (req, res) => {
+    const order = await Order.findById(req.params.id)
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' })
+    }
 
-  // User can only cancel own orders unless admin
-  if (!req.user.isAdmin && order.user.toString() !== req.user._id.toString()) {
-    return res.status(403).json({ message: 'Not authorized' })
-  }
+    if (!canAccessOrder(req.user, order.user)) {
+      return res.status(403).json({ message: 'Not authorized' })
+    }
 
-  if (order.status === 'cancelled') {
-    return res.json(order)
-  }
+    if (order.status === 'cancelled') {
+      return res.json(order)
+    }
 
-  if (order.status === 'shipped' || order.status === 'delivered') {
-    return res.status(400).json({ message: 'Order cannot be cancelled after shipping' })
-  }
+    if (order.status === 'shipped' || order.status === 'delivered') {
+      return res.status(400).json({ message: 'Order cannot be cancelled after shipping' })
+    }
 
-  order.status = 'cancelled'
-  order.cancelledAt = new Date()
-  order.isDelivered = false
-  order.deliveredAt = null
+    order.status = 'cancelled'
+    order.cancelledAt = new Date()
+    order.isDelivered = false
+    order.deliveredAt = null
 
-  const updated = await order.save()
-  res.json(updated)
-})
+    const updated = await order.save()
+    res.json(updated)
+  })
+)
 
 module.exports = router

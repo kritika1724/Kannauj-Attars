@@ -15,5 +15,6 @@ const galleryPhotoSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
-module.exports = mongoose.model('GalleryPhoto', galleryPhotoSchema)
+galleryPhotoSchema.index({ section: 1, order: 1, createdAt: 1 })
 
+module.exports = mongoose.model('GalleryPhoto', galleryPhotoSchema)

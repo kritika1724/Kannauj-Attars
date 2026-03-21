@@ -39,4 +39,12 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 )
 
+productSchema.index({ category: 1, createdAt: -1 })
+productSchema.index({ buyerType: 1, createdAt: -1 })
+productSchema.index({ isBestSeller: 1, createdAt: -1 })
+productSchema.index({ price: 1 })
+productSchema.index({ rating: -1 })
+productSchema.index({ purposeTags: 1 })
+productSchema.index({ familyTags: 1 })
+
 module.exports = mongoose.model('Product', productSchema)

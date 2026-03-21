@@ -278,9 +278,13 @@ function Contact() {
               <FiMail className="mt-1 text-ember" size={20} />
               <div>
                 <p className="text-sm font-semibold text-ink">Email</p>
-                <a href={`mailto:${BUSINESS.email}`} className="text-sm text-muted hover:text-ink">
-                  {BUSINESS.email}
-                </a>
+                <div className="mt-1 space-y-1">
+                  {(BUSINESS.emails || [BUSINESS.email]).map((email) => (
+                    <a key={email} href={`mailto:${email}`} className="block text-sm text-muted hover:text-ink">
+                      {email}
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -301,7 +305,13 @@ function Contact() {
               <FiPhone className="mt-1 text-ember" size={20} />
               <div>
                 <p className="text-sm font-semibold text-ink">Phone</p>
-                <p className="text-sm text-muted">We can add phone details when ready.</p>
+                <div className="mt-1 space-y-1">
+                  {(BUSINESS.phones || []).map((phone) => (
+                    <a key={phone} href={`tel:${phone.replace(/\s+/g, '')}`} className="block text-sm text-muted hover:text-ink">
+                      {phone}
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -311,7 +321,9 @@ function Contact() {
       <footer className="bg-midnight px-6 py-14 text-white">
         <div className="mx-auto w-full max-w-6xl">
           <h2 className="font-display text-2xl">Kannauj Attars</h2>
-          <p className="mt-2 text-sm text-white/75">We will add more contact details whenever you are ready.</p>
+          <p className="mt-2 text-sm text-white/75">
+            Mohalla Holi, Kannauj - 209725 (U.P.), India • {BUSINESS.phones?.join(' • ')}
+          </p>
         </div>
       </footer>
     </div>
