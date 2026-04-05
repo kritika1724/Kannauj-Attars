@@ -6,6 +6,8 @@ const { protect, optionalProtect, adminOnly } = require('../middleware/auth')
 const asyncHandler = require('../utils/asyncHandler')
 
 const router = express.Router()
+const TRACK_ORDER_SELECT =
+  'publicOrderId status createdAt updatedAt paymentMethod isPaid paidAt totalPrice itemsPrice shippingPrice taxPrice orderItems shippingAddress.fullName shippingAddress.phone shippingAddress.whatsapp shippingAddress.email shippingAddress.city shippingAddress.state shippingAddress.postalCode shippingAddress.country'
 
 const packToGrams = (label) => {
   const str = String(label || '').toLowerCase().replace(/,/g, '').trim()
@@ -32,6 +34,28 @@ const canAccessOrder = (reqUser, orderUserId) => {
   if (reqUser.isAdmin === true) return true
   if (!orderUserId) return false
   return String(orderUserId) === String(reqUser._id)
+}
+
+const canCustomerCancel = (status) => String(status || '').toLowerCase() === 'pending'
+
+const findTrackableOrder = async (publicOrderId, { lean = true } = {}) => {
+  const findBy = async (finder) => {
+    const query = finder.select(TRACK_ORDER_SELECT)
+    return lean ? query.lean() : query
+  }
+
+  let order = await findBy(Order.findOne({ publicOrderId }))
+  if (!order && mongoose.isValidObjectId(publicOrderId)) {
+    order = await findBy(Order.findById(publicOrderId))
+  }
+  return order
+}
+
+const contactMatchesOrder = (order, contactValue) => {
+  const allowedContacts = [order?.shippingAddress?.whatsapp, order?.shippingAddress?.phone]
+    .map(normalizePhone)
+    .filter(Boolean)
+  return allowedContacts.includes(contactValue)
 }
 
 // Create order
@@ -157,33 +181,62 @@ router.get(
       return res.status(400).json({ message: 'WhatsApp or phone number is required' })
     }
 
-    let order = await Order.findOne({ publicOrderId })
-      .select(
-        'publicOrderId status createdAt updatedAt paymentMethod isPaid paidAt totalPrice itemsPrice shippingPrice taxPrice orderItems shippingAddress.fullName shippingAddress.phone shippingAddress.whatsapp shippingAddress.email shippingAddress.city shippingAddress.state shippingAddress.postalCode shippingAddress.country'
-      )
-      .lean()
-
-    if (!order && mongoose.isValidObjectId(publicOrderId)) {
-      order = await Order.findById(publicOrderId)
-        .select(
-          '_id publicOrderId status createdAt updatedAt paymentMethod isPaid paidAt totalPrice itemsPrice shippingPrice taxPrice orderItems shippingAddress.fullName shippingAddress.phone shippingAddress.whatsapp shippingAddress.email shippingAddress.city shippingAddress.state shippingAddress.postalCode shippingAddress.country'
-        )
-        .lean()
-    }
+    const order = await findTrackableOrder(publicOrderId)
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' })
     }
 
-    const allowedContacts = [order.shippingAddress?.whatsapp, order.shippingAddress?.phone]
-      .map(normalizePhone)
-      .filter(Boolean)
-
-    if (!allowedContacts.includes(contactValue)) {
+    if (!contactMatchesOrder(order, contactValue)) {
       return res.status(404).json({ message: 'Order not found for the provided details' })
     }
 
     res.json(order)
+  })
+)
+
+// Public: cancel order from track-order flow before admin confirmation
+router.put(
+  '/track/:publicOrderId/cancel',
+  asyncHandler(async (req, res) => {
+    const publicOrderId = String(req.params.publicOrderId || '').trim().toUpperCase()
+    const contactValue = normalizePhone(req.body?.whatsapp || req.body?.phone || req.query.whatsapp || req.query.phone || '')
+
+    if (!publicOrderId) {
+      return res.status(400).json({ message: 'Order id is required' })
+    }
+
+    if (!contactValue) {
+      return res.status(400).json({ message: 'WhatsApp or phone number is required' })
+    }
+
+    const order = await findTrackableOrder(publicOrderId, { lean: false })
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' })
+    }
+
+    if (!contactMatchesOrder(order, contactValue)) {
+      return res.status(404).json({ message: 'Order not found for the provided details' })
+    }
+
+    if (order.status === 'cancelled') {
+      const current = await findTrackableOrder(publicOrderId)
+      return res.json(current)
+    }
+
+    if (!canCustomerCancel(order.status)) {
+      return res.status(400).json({ message: 'Order can only be cancelled before confirmation' })
+    }
+
+    order.status = 'cancelled'
+    order.cancelledAt = new Date()
+    order.isDelivered = false
+    order.deliveredAt = null
+
+    await order.save()
+
+    const updated = await findTrackableOrder(order.publicOrderId || publicOrderId)
+    return res.json(updated)
   })
 )
 
@@ -322,8 +375,8 @@ router.put(
       return res.json(order)
     }
 
-    if (order.status === 'shipped' || order.status === 'delivered') {
-      return res.status(400).json({ message: 'Order cannot be cancelled after shipping' })
+    if (!canCustomerCancel(order.status)) {
+      return res.status(400).json({ message: 'Order can only be cancelled before confirmation' })
     }
 
     order.status = 'cancelled'

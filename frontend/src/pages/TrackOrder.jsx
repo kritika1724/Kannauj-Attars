@@ -19,7 +19,9 @@ function TrackOrder() {
   const [contact, setContact] = useState('')
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [canceling, setCanceling] = useState(false)
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
 
   const loadOrder = async (e) => {
     if (e?.preventDefault) e.preventDefault()
@@ -27,6 +29,7 @@ function TrackOrder() {
     const sameLookup = order?.publicOrderId === nextOrderId
     setLoading(true)
     setError('')
+    setMessage('')
     if (!sameLookup) setOrder(null)
 
     try {
@@ -36,6 +39,26 @@ function TrackOrder() {
       setError(err.message || 'Unable to track this order.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const canCancel = order?.status === 'pending'
+
+  const cancelOrder = async () => {
+    const ok = window.confirm('Cancel this order?')
+    if (!ok) return
+
+    setCanceling(true)
+    setError('')
+    setMessage('')
+    try {
+      const updated = await api.cancelTrackedOrder(publicOrderId.trim().toUpperCase(), contact.trim())
+      setOrder(updated)
+      setMessage('Order cancelled successfully.')
+    } catch (err) {
+      setError(err.message || 'Unable to cancel this order.')
+    } finally {
+      setCanceling(false)
     }
   }
 
@@ -109,6 +132,12 @@ function TrackOrder() {
               </div>
             ) : null}
 
+            {message ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                <p className="text-sm font-semibold text-emerald-700">{message}</p>
+              </div>
+            ) : null}
+
             {order ? (
               <div>
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -132,15 +161,33 @@ function TrackOrder() {
                     This status is synced with the admin dashboard.
                     {order.updatedAt ? ` Last updated: ${new Date(order.updatedAt).toLocaleString()}` : ''}
                   </p>
-                  <button
-                    type="button"
-                    onClick={loadOrder}
-                    disabled={loading}
-                    className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-emberDark transition hover:border-gold/40 disabled:opacity-60"
-                  >
-                    {loading ? 'Refreshing…' : 'Refresh status'}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    {canCancel ? (
+                      <button
+                        type="button"
+                        onClick={cancelOrder}
+                        disabled={canceling || loading}
+                        className="rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-600 transition hover:border-red-300 disabled:opacity-60"
+                      >
+                        {canceling ? 'Cancelling…' : 'Cancel order'}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={loadOrder}
+                      disabled={loading || canceling}
+                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-emberDark transition hover:border-gold/40 disabled:opacity-60"
+                    >
+                      {loading ? 'Refreshing…' : 'Refresh status'}
+                    </button>
+                  </div>
                 </div>
+
+                {canCancel ? (
+                  <p className="mt-3 text-xs text-muted">
+                    You can cancel this order only before it is confirmed by admin.
+                  </p>
+                ) : null}
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-slate-200/80 bg-clay/50 p-4">

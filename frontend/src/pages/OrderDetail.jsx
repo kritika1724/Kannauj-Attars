@@ -77,8 +77,7 @@ function OrderDetail() {
 
   const canPayNow =
     !isAdmin && (order.paymentMethod || '').toUpperCase() === 'RAZORPAY' && !order.isPaid
-  const canCancel =
-    user?.isAdmin !== true && (order.status === 'pending' || order.status === 'confirmed')
+  const canCancel = user?.isAdmin !== true && order.status === 'pending'
 
   return (
     <div className="bg-sand min-h-screen">
@@ -233,7 +232,7 @@ function OrderDetail() {
               <div className="mt-4 rounded-2xl border border-red-200 bg-white p-4">
                 <p className="text-sm font-semibold text-ink">Cancel order</p>
                 <p className="mt-2 text-sm text-muted">
-                  You can cancel this order before it ships. Once cancelled, the admin panel will update automatically.
+                  You can cancel this order only before admin confirms it. Once cancelled, the admin panel will update automatically.
                 </p>
                 {cancelMessage ? (
                   <p className="mt-3 text-xs font-semibold text-emberDark">{cancelMessage}</p>

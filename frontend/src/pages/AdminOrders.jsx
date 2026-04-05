@@ -44,6 +44,8 @@ function AdminOrders() {
 
   useEffect(() => {
     load()
+    const id = window.setInterval(load, 15000)
+    return () => window.clearInterval(id)
   }, [])
 
   const saveStatus = async (id) => {

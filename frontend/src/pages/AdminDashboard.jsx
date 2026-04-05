@@ -16,6 +16,8 @@ function AdminDashboard() {
       }
     }
     load()
+    const id = window.setInterval(load, 15000)
+    return () => window.clearInterval(id)
   }, [])
 
   return (

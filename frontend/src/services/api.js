@@ -124,6 +124,11 @@ export const api = {
   getOrder: (id) => request(`/orders/${id}`),
   trackOrder: (publicOrderId, contact) =>
     request(`/orders/track/${encodeURIComponent(publicOrderId)}?whatsapp=${encodeURIComponent(contact || '')}`),
+  cancelTrackedOrder: (publicOrderId, contact) =>
+    request(`/orders/track/${encodeURIComponent(publicOrderId)}/cancel`, {
+      method: 'PUT',
+      body: JSON.stringify({ whatsapp: contact || '' }),
+    }),
   getAllOrders: () => request('/orders'),
   updateOrderStatus: (id, status) =>
     request(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
