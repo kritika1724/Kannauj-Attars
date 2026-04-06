@@ -47,6 +47,7 @@ function ProductDetail() {
   const [qty, setQty] = useState(1)
   const [packLabel, setPackLabel] = useState('')
   const [buyerType, setBuyerType] = useState('personal') // personal | industrial
+  const [reviewOpen, setReviewOpen] = useState(false)
   const user = auth.getUser()
   const isAdmin = user?.isAdmin === true
 
@@ -62,6 +63,7 @@ function ProductDetail() {
       try {
         const data = await api.getProduct(id)
         setProduct(data)
+        setReviewOpen(false)
         const firstPack = Array.isArray(data?.packs) && data.packs.length ? (data.packs[0].label || '') : ''
         setPackLabel(firstPack)
         if (firstPack && isBulkPack(firstPack)) setBuyerType('industrial')
@@ -126,6 +128,10 @@ function ProductDetail() {
     )
   }
 
+  const hasReviews = Array.isArray(product.reviews) && product.reviews.length > 0
+  const canLeaveReview = !!user && !isAdmin
+  const showReviewsCard = hasReviews
+
   return (
     <div className="bg-sand min-h-screen">
       <header className="px-6 pb-10 pt-12">
@@ -137,8 +143,8 @@ function ProductDetail() {
       </header>
 
       <section className="px-6 pb-16">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-          <div>
+        <div className={`mx-auto grid w-full max-w-6xl gap-10 ${showReviewsCard ? 'lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,360px)]' : ''}`}>
+          <div className={showReviewsCard ? '' : 'max-w-4xl'}>
             <div className="ka-frame ka-mediaBg aspect-[4/3] w-full">
               {product.images?.[0] ? (
                 <a
@@ -320,62 +326,80 @@ function ProductDetail() {
                 </Link>
               </div>
             )}
-          </div>
 
-          <div className="ka-card p-6">
-            <h2 className="text-lg font-semibold text-ink">Reviews</h2>
-            <p className="mt-2 text-sm text-muted">
-              Rating: {product.rating.toFixed(1)} ({product.numReviews} reviews)
-            </p>
-
-            <div className="mt-6 space-y-4">
-              {product.reviews?.map((review) => (
-                <div key={review._id} className="rounded-2xl border border-ember/10 bg-clay/40 p-4">
-                  <p className="text-sm font-semibold text-ink">{review.name}</p>
-                  <p className="text-xs text-muted">Rating: {review.rating}</p>
-                  <p className="mt-2 text-sm text-muted">{review.comment}</p>
-                </div>
-              ))}
-              {product.reviews?.length === 0 && (
-                <p className="text-sm text-muted">No reviews yet.</p>
-              )}
-            </div>
-
-            <div className="mt-6">
-              {user && !isAdmin ? (
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {canLeaveReview ? (
+              <div className="mt-8 rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <label className="text-sm font-semibold text-ink">Rating (1-5)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="5"
-                      {...register('rating')}
-                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
-                    />
-                    {errors.rating && <p className="mt-2 text-xs text-red-600">{errors.rating.message}</p>}
+                    <p className="text-sm font-semibold text-ink">Share your review</p>
+                    <p className="mt-1 text-sm text-muted">
+                      {hasReviews ? 'Add your feedback for this product.' : 'Be the first to review this product.'}
+                    </p>
                   </div>
-                  <div>
-                    <label className="text-sm font-semibold text-ink">Comment</label>
-                    <textarea
-                      rows="4"
-                      {...register('comment')}
-                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
-                    />
-                    {errors.comment && (
-                      <p className="mt-2 text-xs text-red-600">{errors.comment.message}</p>
-                    )}
-                  </div>
-                  <button type="submit" className="rounded-full bg-ember px-5 py-2 text-sm font-semibold text-white">
-                    Submit review
+                  <button
+                    type="button"
+                    onClick={() => setReviewOpen((v) => !v)}
+                    className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-emberDark transition hover:border-gold/50"
+                  >
+                    {reviewOpen ? 'Hide form' : 'Write a review'}
                   </button>
-                </form>
-              ) : !user ? (
-                <p className="text-sm text-muted">Login to leave a review.</p>
-              ) : null}
-              {message && <p className="mt-3 text-sm font-semibold text-emberDark">{message}</p>}
-            </div>
+                </div>
+
+                {reviewOpen ? (
+                  <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4">
+                    <div>
+                      <label className="text-sm font-semibold text-ink">Rating (1-5)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        {...register('rating')}
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                      />
+                      {errors.rating && <p className="mt-2 text-xs text-red-600">{errors.rating.message}</p>}
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-ink">Comment</label>
+                      <textarea
+                        rows="4"
+                        {...register('comment')}
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                      />
+                      {errors.comment && (
+                        <p className="mt-2 text-xs text-red-600">{errors.comment.message}</p>
+                      )}
+                    </div>
+                    <button type="submit" className="rounded-full bg-ember px-5 py-2 text-sm font-semibold text-white">
+                      Submit review
+                    </button>
+                  </form>
+                ) : null}
+
+                {message ? <p className="mt-3 text-sm font-semibold text-emberDark">{message}</p> : null}
+              </div>
+            ) : null}
           </div>
+
+          {showReviewsCard ? (
+            <div className="ka-card h-fit p-5 lg:sticky lg:top-24">
+              <h2 className="text-lg font-semibold text-ink">Reviews</h2>
+              <p className="mt-2 text-sm text-muted">
+                Rating: {product.rating.toFixed(1)} ({product.numReviews} reviews)
+              </p>
+
+              <div className="mt-5 space-y-3 lg:max-h-[32rem] lg:overflow-y-auto lg:pr-1">
+                {product.reviews?.map((review) => (
+                  <div key={review._id} className="rounded-2xl border border-ember/10 bg-clay/40 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-ink">{review.name}</p>
+                      <p className="text-xs font-semibold text-emberDark">{review.rating}/5</p>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-muted">{review.comment}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 
