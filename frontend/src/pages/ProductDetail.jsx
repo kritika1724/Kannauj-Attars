@@ -9,6 +9,7 @@ import { addToCart } from '../features/cartSlice'
 import { viewProduct as trackView } from '../features/recentlyViewedSlice'
 import { toAssetUrl } from '../utils/media'
 import RecentlyViewedStrip from '../components/RecentlyViewedStrip'
+import RichTextContent from '../components/RichTextContent'
 
 const schema = yup.object({
   rating: yup.number().required('Rating is required.').min(1).max(5),
@@ -165,7 +166,7 @@ function ProductDetail() {
                 <div className="h-full w-full bg-[linear-gradient(135deg,#f7efe5,#e6d6c2)]" />
               )}
             </div>
-            <p className="mt-6 text-sm text-muted">{product.description}</p>
+            <RichTextContent value={product.description} className="mt-6 space-y-4" />
             {product.highlights?.length > 0 && (
               <ul className="mt-4 space-y-2 text-sm text-muted">
                 {product.highlights.map((item) => (

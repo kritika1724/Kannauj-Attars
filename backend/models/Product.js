@@ -18,6 +18,7 @@ const productSchema = new mongoose.Schema(
     familyTags: { type: [String], default: [] },
     // Curated on Explore/Home by admin (manual best-seller list)
     isBestSeller: { type: Boolean, default: false },
+    isNewArrival: { type: Boolean, default: false },
     price: { type: Number, required: true },
     packs: {
       type: [
@@ -42,6 +43,7 @@ const productSchema = new mongoose.Schema(
 productSchema.index({ category: 1, createdAt: -1 })
 productSchema.index({ buyerType: 1, createdAt: -1 })
 productSchema.index({ isBestSeller: 1, createdAt: -1 })
+productSchema.index({ isNewArrival: 1, createdAt: -1 })
 productSchema.index({ price: 1 })
 productSchema.index({ rating: -1 })
 productSchema.index({ purposeTags: 1 })

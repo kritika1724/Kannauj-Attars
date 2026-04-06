@@ -13,8 +13,7 @@ const schema = yup.object({
   category: yup.string().required('Category is required.'),
   buyerType: yup.string().oneOf(['personal', 'industrial', 'both']).default('personal'),
   isBestSeller: yup.boolean().default(false),
-  price: yup.number().typeError('Enter a valid price.').required('Price is required.'),
-  stock: yup.number().typeError('Enter stock count.'),
+  isNewArrival: yup.boolean().default(false),
   highlights: yup.string(),
 })
 
@@ -34,15 +33,24 @@ function AdminProductForm() {
   const {
     register,
     handleSubmit,
+    getValues,
     setValue,
     formState: { errors },
   } = useForm({ resolver: yupResolver(schema) })
+
+  const appendDescriptionTemplate = (snippet) => {
+    const current = String(getValues('description') || '')
+    const normalized = current.trimEnd()
+    const nextValue = normalized ? `${normalized}\n${snippet}` : snippet
+    setValue('description', nextValue, { shouldDirty: true, shouldValidate: true })
+  }
 
   useEffect(() => {
     // Defaults for new products
     if (!isEditing) {
       setValue('buyerType', 'personal')
       setValue('isBestSeller', false)
+      setValue('isNewArrival', false)
     }
     if (!isEditing) return
     const load = async () => {
@@ -52,8 +60,7 @@ function AdminProductForm() {
       setValue('category', product.category)
       setValue('buyerType', product.buyerType || 'personal')
       setValue('isBestSeller', product.isBestSeller === true)
-      setValue('price', product.price)
-      setValue('stock', product.stock ?? 0)
+      setValue('isNewArrival', product.isNewArrival === true)
       setValue('highlights', product.highlights?.join(', ') || '')
       setImages(product.images || [])
       setPurposeTags(Array.isArray(product.purposeTags) ? product.purposeTags : [])
@@ -66,6 +73,8 @@ function AdminProductForm() {
             stock: p.stock ?? '',
           }))
         )
+      } else if (product.price !== undefined && product.price !== null) {
+        setPacks([{ label: 'Default pack', price: product.price, stock: product.stock ?? '' }])
       }
     }
     load()
@@ -99,10 +108,16 @@ function AdminProductForm() {
       }))
       .filter((p) => p.label && !Number.isNaN(p.price))
 
+    if (!normalizedPacks.length) {
+      setMessage('Add at least one pack size with price.')
+      return
+    }
+
+    const basePrice = normalizedPacks.reduce((min, pack) => (pack.price < min ? pack.price : min), normalizedPacks[0].price)
+
     const payload = {
       ...data,
-      price: Number(data.price),
-      stock: data.stock === '' || data.stock === undefined ? 0 : Number(data.stock),
+      price: Number(basePrice),
       highlights: data.highlights ? data.highlights.split(',').map((item) => item.trim()) : [],
       images,
       packs: normalizedPacks,
@@ -148,11 +163,37 @@ function AdminProductForm() {
             </div>
             <div>
               <label className="text-sm font-semibold text-ink">Description</label>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => appendDescriptionTemplate('- Point one\n- Point two')}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-emberDark hover:border-gold/40"
+                >
+                  Add bullet list
+                </button>
+                <button
+                  type="button"
+                  onClick={() => appendDescriptionTemplate('1. First point\n2. Second point')}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-emberDark hover:border-gold/40"
+                >
+                  Add numbering
+                </button>
+                <button
+                  type="button"
+                  onClick={() => appendDescriptionTemplate('\n')}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-emberDark hover:border-gold/40"
+                >
+                  Add line gap
+                </button>
+              </div>
               <textarea
                 {...register('description')}
                 rows="4"
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
               />
+              <p className="mt-2 text-xs text-muted">
+                You can write paragraphs, add bullets with `-`, or numbering like `1.` and `2.`.
+              </p>
               {errors.description && (
                 <p className="mt-2 text-xs text-red-600">{errors.description.message}</p>
               )}
@@ -167,28 +208,6 @@ function AdminProductForm() {
                 {errors.category && (
                   <p className="mt-2 text-xs text-red-600">{errors.category.message}</p>
                 )}
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-ink">Price</label>
-                <input
-                  {...register('price')}
-                  type="number"
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
-                />
-                {errors.price && <p className="mt-2 text-xs text-red-600">{errors.price.message}</p>}
-                <p className="mt-2 text-xs text-muted">
-                  Base price is used if you don’t add pack sizes below.
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-ink">Stock</label>
-                <input
-                  {...register('stock')}
-                  type="number"
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
-                />
-                {errors.stock && <p className="mt-2 text-xs text-red-600">{errors.stock.message}</p>}
-                <p className="mt-2 text-xs text-muted">Optional if you manage stock by pack sizes.</p>
               </div>
               <div>
                 <label className="text-sm font-semibold text-ink">Highlights (comma separated)</label>
@@ -216,6 +235,20 @@ function AdminProductForm() {
                 <input
                   type="checkbox"
                   {...register('isBestSeller')}
+                  className="mt-1 h-5 w-5 accent-ember"
+                />
+              </label>
+
+              <label className="mt-4 flex cursor-pointer items-start justify-between gap-4 rounded-3xl border border-slate-200/80 bg-white px-5 py-4">
+                <div>
+                  <p className="text-sm font-semibold text-ink">Show “New” tag</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Turn this on if you want the product card to display a New badge.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  {...register('isNewArrival')}
                   className="mt-1 h-5 w-5 accent-ember"
                 />
               </label>
@@ -390,11 +423,7 @@ function AdminProductForm() {
                 ))}
               </div>
 
-              {!hasPacks && (
-                <p className="mt-4 text-xs text-muted">
-                  If you don’t add pack sizes, the product will use the base price above.
-                </p>
-              )}
+              {!hasPacks ? <p className="mt-4 text-xs text-muted">Add at least one pack size with price.</p> : null}
             </div>
 
             <div>

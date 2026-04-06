@@ -21,17 +21,17 @@ const getMinPack = (packs = []) => {
 }
 
 const getShortDescription = (text, maxLength = 96) => {
-  const value = String(text || '').trim()
+  const value = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim())
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
   if (!value) return ''
   if (value.length <= maxLength) return value
   return `${value.slice(0, maxLength).trim()}...`
-}
-
-const isRecentlyAdded = (createdAt) => {
-  if (!createdAt) return false
-  const stamp = new Date(createdAt).getTime()
-  if (!Number.isFinite(stamp)) return false
-  return Date.now() - stamp <= 1000 * 60 * 60 * 24 * 21
 }
 
 function Products() {
@@ -439,7 +439,7 @@ function ProductCard({ product, onView, onAdd, isAdmin }) {
                 Best seller
               </span>
             ) : null}
-            {isRecentlyAdded(product?.createdAt) ? (
+            {product?.isNewArrival ? (
               <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-emberDark shadow-sm">
                 New
               </span>
