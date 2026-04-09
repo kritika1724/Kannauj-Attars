@@ -5,20 +5,53 @@ import { api } from '../services/api'
 function AdminDashboard() {
   const [stats, setStats] = useState(null)
   const [error, setError] = useState('')
+  const [actionId, setActionId] = useState('')
+
+  const load = async () => {
+    try {
+      setError('')
+      const data = await api.adminStats()
+      setStats(data)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await api.adminStats()
-        setStats(data)
-      } catch (err) {
-        setError(err.message)
-      }
-    }
     load()
     const id = window.setInterval(load, 15000)
     return () => window.clearInterval(id)
   }, [])
+
+  const removeOrder = async (id) => {
+    const ok = window.confirm('Delete this order permanently?')
+    if (!ok) return
+
+    try {
+      setActionId(`order-${id}`)
+      await api.deleteOrder(id)
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setActionId('')
+    }
+  }
+
+  const removeContact = async (id) => {
+    const ok = window.confirm('Delete this contact request?')
+    if (!ok) return
+
+    try {
+      setActionId(`contact-${id}`)
+      await api.deleteContactMessage(id)
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setActionId('')
+    }
+  }
 
   return (
     <div className="bg-sand min-h-screen">
@@ -79,7 +112,6 @@ function AdminDashboard() {
           <div className="grid gap-6 md:grid-cols-3">
             {[
               { label: 'Products', value: stats?.products ?? '—' },
-              { label: 'Users', value: stats?.users ?? '—' },
               { label: 'Orders', value: stats?.orders ?? '—', sticker: stats?.newOrders },
               { label: 'Contacts', value: stats?.contactMessages ?? '—', sticker: stats?.newContactMessages },
             ].map((card) => (
@@ -136,6 +168,14 @@ function AdminDashboard() {
                     <div className="text-right">
                       <p className="text-sm font-semibold text-ink">₹{order.totalPrice}</p>
                       <p className="mt-1 text-xs text-muted">{order.status}</p>
+                      <button
+                        type="button"
+                        onClick={() => removeOrder(order._id)}
+                        disabled={actionId === `order-${order._id}`}
+                        className="mt-3 rounded-full border border-red-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-red-600 disabled:opacity-50"
+                      >
+                        {actionId === `order-${order._id}` ? 'Deleting…' : 'Delete'}
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -174,7 +214,17 @@ function AdminDashboard() {
                         {m.createdAt ? new Date(m.createdAt).toLocaleString() : ''}
                       </p>
                     </div>
-                    <p className="text-xs font-semibold text-emberDark">{m.status || 'new'}</p>
+                    <div className="text-right">
+                      <p className="text-xs font-semibold text-emberDark">{m.status || 'new'}</p>
+                      <button
+                        type="button"
+                        onClick={() => removeContact(m._id)}
+                        disabled={actionId === `contact-${m._id}`}
+                        className="mt-3 rounded-full border border-red-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-red-600 disabled:opacity-50"
+                      >
+                        {actionId === `contact-${m._id}` ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
                   </div>
                 ))}
 

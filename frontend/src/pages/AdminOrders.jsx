@@ -23,6 +23,7 @@ function AdminOrders() {
   const [orders, setOrders] = useState([])
   const [error, setError] = useState('')
   const [savingId, setSavingId] = useState('')
+  const [deletingId, setDeletingId] = useState('')
   const [statusDraft, setStatusDraft] = useState({})
 
   const pendingCount = orders.filter((o) => (o.status || 'pending') === 'pending').length
@@ -58,6 +59,27 @@ function AdminOrders() {
       setError(err.message)
     } finally {
       setSavingId('')
+    }
+  }
+
+  const removeOrder = async (id) => {
+    const ok = window.confirm('Delete this order permanently?')
+    if (!ok) return
+
+    setDeletingId(id)
+    setError('')
+    try {
+      await api.deleteOrder(id)
+      setOrders((prev) => prev.filter((order) => order._id !== id))
+      setStatusDraft((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setDeletingId('')
     }
   }
 
@@ -151,10 +173,18 @@ function AdminOrders() {
                       <button
                         type="button"
                         onClick={() => saveStatus(order._id)}
-                        disabled={savingId === order._id}
+                        disabled={savingId === order._id || deletingId === order._id}
                         className="rounded-full bg-ember px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
                       >
                         {savingId === order._id ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeOrder(order._id)}
+                        disabled={deletingId === order._id || savingId === order._id}
+                        className="rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-600 disabled:opacity-50"
+                      >
+                        {deletingId === order._id ? 'Deleting…' : 'Delete'}
                       </button>
                     </div>
                   </div>

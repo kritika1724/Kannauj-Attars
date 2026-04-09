@@ -132,6 +132,7 @@ export const api = {
   getAllOrders: () => request('/orders'),
   updateOrderStatus: (id, status) =>
     request(`/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  deleteOrder: (id) => request(`/orders/${id}`, { method: 'DELETE' }),
   cancelOrder: (id) => request(`/orders/${id}/cancel`, { method: 'PUT' }),
   adminStats: () => request('/admin/stats'),
   // Razorpay payments

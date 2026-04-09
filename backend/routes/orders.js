@@ -357,6 +357,22 @@ router.put(
   })
 )
 
+// Admin: delete order
+router.delete(
+  '/:id',
+  protect,
+  adminOnly,
+  asyncHandler(async (req, res) => {
+    const order = await Order.findById(req.params.id)
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' })
+    }
+
+    await order.deleteOne()
+    res.json({ message: 'Order deleted' })
+  })
+)
+
 // User: cancel own order (only before shipping)
 router.put(
   '/:id/cancel',

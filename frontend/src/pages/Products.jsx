@@ -361,11 +361,12 @@ function Products() {
 
           <div className="mt-16 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">
             <div className="max-w-2xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Extended Catalog</p>
-              <h2 className="mt-4 text-2xl font-semibold text-ink md:text-3xl">Kannauj Attars product families</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Our Product Range</p>
+              <h2 className="mt-4 text-2xl font-semibold text-ink md:text-3xl">
+                Traditional attars, roohs, waters, and essential oils
+              </h2>
               <p className="mt-3 text-sm text-muted">
-                Along with listed products in the store, we also deal in the following traditional attars, roohs,
-                waters, and oils. For availability, packs, and trade supply, please contact us.
+                A focused range of classic Indian attars, floral roohs, waters, and specialty oils.
               </p>
             </div>
 
@@ -376,6 +377,7 @@ function Products() {
                   className="rounded-3xl border border-slate-200/80 bg-clay/50 p-5"
                 >
                   <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">{section.title}</p>
+                  <div className="mt-4 ka-divider" />
                   <ul className="mt-4 space-y-2 text-sm text-emberDark">
                     {section.items.map((item) => (
                       <li key={item} className="flex items-start gap-2">
@@ -386,6 +388,20 @@ function Products() {
                   </ul>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-8 rounded-3xl border border-gold/20 bg-midnight p-6 text-white shadow-soft">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.32em] text-white/60">Trade & Enquiry</p>
+                  <p className="mt-2 text-sm text-white/80">
+                    For pack sizes, current pricing, bulk supply, or custom requirements, contact Kannauj Attars directly.
+                  </p>
+                </div>
+                <Link to="/contact" className="ka-btn-primary px-5 py-2">
+                  Request details
+                </Link>
+              </div>
             </div>
           </div>
         </div>

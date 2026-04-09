@@ -1,7 +1,6 @@
 const express = require('express')
 const { protect, adminOnly } = require('../middleware/auth')
 const Product = require('../models/Product')
-const User = require('../models/User')
 const Order = require('../models/Order')
 const ContactMessage = require('../models/ContactMessage')
 const asyncHandler = require('../utils/asyncHandler')
@@ -13,9 +12,8 @@ router.get(
   protect,
   adminOnly,
   asyncHandler(async (req, res) => {
-    const [products, users, orders, contactMessages, newContactMessages, newOrders] = await Promise.all([
+    const [products, orders, contactMessages, newContactMessages, newOrders] = await Promise.all([
       Product.estimatedDocumentCount(),
-      User.estimatedDocumentCount(),
       Order.estimatedDocumentCount(),
       ContactMessage.estimatedDocumentCount(),
       ContactMessage.countDocuments({ status: 'new' }),
@@ -38,7 +36,6 @@ router.get(
 
     res.json({
       products,
-      users,
       orders,
       contactMessages,
       newContactMessages,
