@@ -80,7 +80,12 @@ function PlaceOrder() {
 
   const placeOrder = async () => {
     const payload = {
-      orderItems: items.map((i) => ({ product: i.product, qty: i.qty, packLabel: i.packLabel || '' })),
+      orderItems: items.map((i) => ({
+        product: i.product,
+        qty: i.qty,
+        packLabel: i.packLabel || '',
+        isSample: i.isSample === true,
+      })),
       shippingAddress,
       paymentMethod,
     }
@@ -150,12 +155,15 @@ function PlaceOrder() {
               <div className="mt-4 grid gap-3">
                 {items.map((item) => (
                   <div
-                    key={`${item.product}-${item.packLabel || 'default'}`}
+                    key={`${item.product}-${item.packLabel || 'default'}-${item.isSample ? 'sample' : 'regular'}`}
                     className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-clay/70 p-4"
                   >
                     <div>
                       <p className="text-sm font-semibold text-ink">{item.name}</p>
-                      <p className="mt-1 text-xs text-muted">Qty: {item.qty}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        Qty: {item.qty}
+                        {item.packLabel ? ` • ${item.isSample ? 'Sample' : 'Pack'}: ${item.packLabel}` : ''}
+                      </p>
                     </div>
                     <p className="text-sm font-semibold text-ink">₹{item.qty * item.price}</p>
                   </div>

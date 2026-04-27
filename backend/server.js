@@ -24,6 +24,8 @@ const { router: sessionRoutes } = require('./routes/session')
 const paymentRoutes = require('./routes/payments')
 const contactRoutes = require('./routes/contact')
 const galleryRoutes = require('./routes/gallery')
+const taxonomyRoutes = require('./routes/taxonomy')
+const { ensureDefaultTaxonomy } = require('./utils/taxonomy')
 
 dotenv.config()
 // Load env from backend/.env even if server is started from the repo root.
@@ -68,6 +70,13 @@ app.use(
       useDefaults: true,
       directives: {
         imgSrc: [
+          "'self'",
+          'data:',
+          'blob:',
+          'https://res.cloudinary.com',
+          'https://*.cloudinary.com',
+        ],
+        mediaSrc: [
           "'self'",
           'data:',
           'blob:',
@@ -143,6 +152,7 @@ app.use('/api/session', sessionRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/contact', contactRoutes)
 app.use('/api/gallery', galleryRoutes)
+app.use('/api/taxonomy', taxonomyRoutes)
 
 app.use(
   '/uploads',
@@ -195,6 +205,7 @@ app.use((err, req, res, next) => {
 const start = async () => {
   try {
     await connectDB(process.env.MONGO_URI)
+    await ensureDefaultTaxonomy()
 
     // Use a fixed port to avoid frontend/backend mismatches.
     const port = Number(process.env.PORT || 5000)

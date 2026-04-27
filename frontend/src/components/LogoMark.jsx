@@ -1,21 +1,28 @@
 import { useMemo } from 'react'
 import { useSiteAssets } from './SiteAssetsProvider'
 import { toAssetUrl } from '../utils/media'
+import { BUSINESS } from '../config/business'
 
 function LogoMark({ className = '' }) {
   const { assets } = useSiteAssets()
 
   const url = assets?.['site.logo'] || ''
   const src = useMemo(() => (url ? toAssetUrl(url, import.meta.env.VITE_API_ASSET) : ''), [url])
+  const logoZoom = Math.min(Math.max(Number(assets?.['site.logo.zoom']) || 1, 1), 2.5)
 
   if (src) {
     return (
       <div
         className={`relative grid h-11 w-11 place-items-center overflow-hidden rounded-full border border-gold/25 bg-white shadow-sm ${className}`}
-        aria-label="Kannauj Attars logo"
-        title="Kannauj Attars"
+        aria-label={`${BUSINESS.displayName} logo`}
+        title={BUSINESS.displayName}
       >
-        <img src={src} alt="Kannauj Attars" className="h-full w-full object-contain p-1.5" />
+        <img
+          src={src}
+          alt={BUSINESS.displayName}
+          className="h-full w-full object-contain p-1.5 transition-transform duration-300"
+          style={{ transform: `scale(${logoZoom})` }}
+        />
       </div>
     )
   }
@@ -23,8 +30,8 @@ function LogoMark({ className = '' }) {
   return (
     <div
       className={`relative grid h-11 w-11 place-items-center rounded-full border border-gold/30 bg-white shadow-sm ${className}`}
-      aria-label="Kannauj Attars logo"
-      title="Kannauj Attars"
+      aria-label={`${BUSINESS.displayName} logo`}
+      title={BUSINESS.displayName}
     >
       <div className="absolute inset-1 rounded-full bg-[radial-gradient(circle_at_top,rgba(201,162,74,0.26),rgba(255,255,255,0.94))]" />
       <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_180deg,rgba(201,162,74,0.08),rgba(17,27,58,0.06),rgba(201,162,74,0.10))] opacity-60" />

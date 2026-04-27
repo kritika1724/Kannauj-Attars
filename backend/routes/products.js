@@ -1,16 +1,70 @@
 const express = require('express')
+const mongoose = require('mongoose')
 const Product = require('../models/Product')
-const { protect, adminOnly } = require('../middleware/auth')
+const Order = require('../models/Order')
+const { protect, optionalProtect, adminOnly } = require('../middleware/auth')
 const asyncHandler = require('../utils/asyncHandler')
 const escapeRegex = require('../utils/escapeRegex')
 
 const router = express.Router()
+const ALLOWED_COLLECTIONS = new Set(['signature', 'heritage'])
+
+const normalizeCollections = (value) => {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.map((item) => String(item || '').trim().toLowerCase()).filter((item) => ALLOWED_COLLECTIONS.has(item)))]
+}
+
+const normalizeSample = (value) => {
+  if (value?.enabled !== true) {
+    return { enabled: false, label: '', price: 0 }
+  }
+
+  const label = String(value?.label || '').trim()
+  const price = Number(value?.price)
+
+  return {
+    enabled: true,
+    label,
+    price: Number.isFinite(price) ? price : 0,
+  }
+}
+
+const normalizeProductStock = (value) => {
+  const stock = Number(value)
+  if (!Number.isFinite(stock) || stock < 0) return 0
+  return Math.floor(stock)
+}
+
+const normalizeImageZoom = (value) => {
+  const zoom = Number(value)
+  if (!Number.isFinite(zoom)) return 1
+  return Math.min(Math.max(zoom, 1), 2.5)
+}
+
+const findReviewOrder = async (orderId) => {
+  const value = String(orderId || '').trim()
+  if (!value) return null
+
+  const normalizedPublicOrderId = value.toUpperCase()
+  let order = await Order.findOne({ publicOrderId: normalizedPublicOrderId })
+    .select('_id publicOrderId status orderItems.product shippingAddress.fullName')
+    .lean()
+
+  if (!order && mongoose.isValidObjectId(value)) {
+    order = await Order.findById(value)
+      .select('_id publicOrderId status orderItems.product shippingAddress.fullName')
+      .lean()
+  }
+
+  return order
+}
 
 router.get(
   '/',
+  optionalProtect,
   asyncHandler(async (req, res) => {
     const page = Math.max(1, Number(req.query.page) || 1)
-    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 50)
+    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 100)
     const skip = (page - 1) * limit
 
     const keyword = (req.query.keyword || '').trim()
@@ -18,6 +72,7 @@ router.get(
     const buyer = (req.query.buyer || '').trim()
     const purposeRaw = (req.query.purpose || '').trim()
     const familyRaw = (req.query.family || '').trim()
+    const collectionRaw = (req.query.collection || '').trim()
     const bestSeller = (req.query.bestSeller || '').toString().trim()
     const minPrice = req.query.minPrice !== undefined ? Number(req.query.minPrice) : undefined
     const maxPrice = req.query.maxPrice !== undefined ? Number(req.query.maxPrice) : undefined
@@ -52,9 +107,16 @@ router.get(
           .map((s) => s.trim())
           .filter(Boolean)
       : []
+    const collections = collectionRaw
+      ? collectionRaw
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter((s) => ALLOWED_COLLECTIONS.has(s))
+      : []
 
     if (purposes.length) filter.purposeTags = { $in: purposes }
     if (families.length) filter.familyTags = { $in: families }
+    if (collections.length) filter.featuredCollections = { $in: collections }
     if (bestSeller && ['1', 'true', 'yes', 'on'].includes(bestSeller.toLowerCase())) {
       filter.isBestSeller = true
     }
@@ -77,7 +139,7 @@ router.get(
     const [total, products] = await Promise.all([
       Product.countDocuments(filter),
       Product.find(filter)
-        .select('-reviews')
+        .select(req.user?.isAdmin === true ? '-reviews' : '-reviews -stock -packs.stock')
         .sort(sortObj)
         .skip(skip)
         .limit(limit)
@@ -95,8 +157,13 @@ router.get(
 
 router.get(
   '/:id',
+  optionalProtect,
   asyncHandler(async (req, res) => {
-    const product = await Product.findById(req.params.id).lean()
+    const query = Product.findById(req.params.id)
+    if (req.user?.isAdmin !== true) {
+      query.select('-stock -packs.stock')
+    }
+    const product = await query.lean()
     if (!product) {
       return res.status(404).json({ message: 'Product not found' })
     }
@@ -112,11 +179,14 @@ router.post('/', protect, adminOnly, asyncHandler(async (req, res) => {
     buyerType,
     purposeTags,
     familyTags,
+    featuredCollections,
     isBestSeller,
     isNewArrival,
+    sample,
     price,
     packs,
     images,
+    imageZoom,
     stock,
     highlights,
   } = req.body
@@ -132,12 +202,15 @@ router.post('/', protect, adminOnly, asyncHandler(async (req, res) => {
     buyerType,
     purposeTags: Array.isArray(purposeTags) ? purposeTags : [],
     familyTags: Array.isArray(familyTags) ? familyTags : [],
+    featuredCollections: normalizeCollections(featuredCollections),
     isBestSeller: isBestSeller === true,
     isNewArrival: isNewArrival === true,
+    sample: normalizeSample(sample),
     price,
     packs: Array.isArray(packs) ? packs : [],
     images,
-    stock,
+    imageZoom: normalizeImageZoom(imageZoom),
+    stock: normalizeProductStock(stock),
     highlights,
   })
 
@@ -157,11 +230,14 @@ router.put('/:id', protect, adminOnly, asyncHandler(async (req, res) => {
     'buyerType',
     'purposeTags',
     'familyTags',
+    'featuredCollections',
     'isBestSeller',
     'isNewArrival',
+    'sample',
     'price',
     'packs',
     'images',
+    'imageZoom',
     'stock',
     'highlights',
   ]
@@ -169,6 +245,14 @@ router.put('/:id', protect, adminOnly, asyncHandler(async (req, res) => {
     if (req.body[field] !== undefined) {
       if (field === 'purposeTags' || field === 'familyTags') {
         product[field] = Array.isArray(req.body[field]) ? req.body[field] : []
+      } else if (field === 'featuredCollections') {
+        product[field] = normalizeCollections(req.body[field])
+      } else if (field === 'sample') {
+        product[field] = normalizeSample(req.body[field])
+      } else if (field === 'stock') {
+        product[field] = normalizeProductStock(req.body[field])
+      } else if (field === 'imageZoom') {
+        product[field] = normalizeImageZoom(req.body[field])
       } else {
         product[field] = req.body[field]
       }
@@ -188,15 +272,20 @@ router.delete('/:id', protect, adminOnly, asyncHandler(async (req, res) => {
   res.json({ message: 'Product deleted' })
 }))
 
-router.post('/:id/reviews', protect, asyncHandler(async (req, res) => {
+router.post('/:id/reviews', optionalProtect, asyncHandler(async (req, res) => {
   if (req.user?.isAdmin === true) {
     return res.status(403).json({ message: 'Admins cannot submit reviews' })
   }
 
-  const { rating, comment } = req.body
+  const { rating, comment, orderId } = req.body
+  const numericRating = Number(rating)
 
-  if (!rating || !comment) {
-    return res.status(400).json({ message: 'Rating and comment are required' })
+  if (!orderId) {
+    return res.status(400).json({ message: 'Order ID is required' })
+  }
+
+  if (!Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
+    return res.status(400).json({ message: 'Rating must be between 1 and 5 stars' })
   }
 
   const product = await Product.findById(req.params.id)
@@ -204,19 +293,43 @@ router.post('/:id/reviews', protect, asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Product not found' })
   }
 
+  const order = await findReviewOrder(orderId)
+  if (!order) {
+    return res.status(404).json({ message: 'Order not found' })
+  }
+
+  const normalizedOrderStatus = String(order.status || '').toLowerCase()
+  if (normalizedOrderStatus !== 'delivered') {
+    return res.status(400).json({ message: 'Review can be submitted only after the order is delivered' })
+  }
+
+  const orderedProduct = Array.isArray(order.orderItems)
+    ? order.orderItems.find((item) => String(item.product) === String(product._id))
+    : null
+
+  if (!orderedProduct) {
+    return res.status(400).json({ message: 'This product was not included in the provided order' })
+  }
+
+  const reviewOrderId = String(order.publicOrderId || order._id)
   const alreadyReviewed = product.reviews.find(
-    (review) => review.user.toString() === req.user._id.toString()
+    (review) =>
+      (review.order && String(review.order) === String(order._id)) ||
+      (review.publicOrderId && String(review.publicOrderId) === reviewOrderId)
   )
 
   if (alreadyReviewed) {
-    return res.status(400).json({ message: 'You already reviewed this product' })
+    return res.status(400).json({ message: 'A review for this product has already been submitted with this order ID' })
   }
 
   product.reviews.push({
-    user: req.user._id,
-    name: req.user.name,
-    rating: Number(rating),
-    comment,
+    user: req.user?._id || null,
+    order: order._id,
+    publicOrderId: reviewOrderId,
+    name: String(order.shippingAddress?.fullName || req.user?.name || 'Verified buyer').trim(),
+    rating: numericRating,
+    comment: String(comment || '').trim(),
+    verifiedPurchase: true,
   })
   product.numReviews = product.reviews.length
   product.rating =

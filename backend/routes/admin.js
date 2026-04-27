@@ -12,12 +12,18 @@ router.get(
   protect,
   adminOnly,
   asyncHandler(async (req, res) => {
-    const [products, orders, contactMessages, newContactMessages, newOrders] = await Promise.all([
+    const [products, orders, contactMessages, newContactMessages, newOrders, lowStockCount, lowStockProducts] = await Promise.all([
       Product.estimatedDocumentCount(),
       Order.estimatedDocumentCount(),
       ContactMessage.estimatedDocumentCount(),
       ContactMessage.countDocuments({ status: 'new' }),
       Order.countDocuments({ status: 'pending' }),
+      Product.countDocuments({ stock: { $lte: 5 } }),
+      Product.find({ stock: { $lte: 5 } })
+        .select('_id name stock category updatedAt')
+        .sort({ stock: 1, updatedAt: -1 })
+        .limit(8)
+        .lean(),
     ])
 
     const [recentOrders, recentContactMessages] = await Promise.all([
@@ -40,6 +46,8 @@ router.get(
       contactMessages,
       newContactMessages,
       newOrders,
+      lowStockCount,
+      lowStockProducts,
       recentOrders,
       recentContactMessages,
     })

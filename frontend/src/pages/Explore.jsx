@@ -5,13 +5,25 @@ import AdminAssetImage from '../components/AdminAssetImage'
 import { PURPOSE_TAGS, FAMILY_TAGS } from '../config/taxonomy'
 import { api, auth } from '../services/api'
 import { toAssetUrl } from '../utils/media'
+import { BUSINESS } from '../config/business'
 
 const getMinPack = (packs = []) => {
   const normalized = packs
-    .map((p) => ({ label: (p.label || '').trim(), price: Number(p.price) }))
-    .filter((p) => p.label && !Number.isNaN(p.price))
+    .map((p) => {
+      const price = Number(p.price)
+      const salePrice = p.salePrice === null || p.salePrice === undefined || p.salePrice === '' ? null : Number(p.salePrice)
+      const onSale = Number.isFinite(salePrice) && salePrice > 0 && Number.isFinite(price) && salePrice < price
+      return {
+        label: (p.label || '').trim(),
+        price,
+        salePrice: onSale ? salePrice : null,
+        effectivePrice: onSale ? salePrice : price,
+        onSale,
+      }
+    })
+    .filter((p) => p.label && !Number.isNaN(p.effectivePrice))
   if (!normalized.length) return null
-  return normalized.reduce((min, p) => (p.price < min.price ? p : min), normalized[0])
+  return normalized.reduce((min, p) => (p.effectivePrice < min.effectivePrice ? p : min), normalized[0])
 }
 
 const featuredCards = [
@@ -169,15 +181,23 @@ function BestSellerCard({ product }) {
           <Link to={`/products/${product._id}`} className="block">
             <h3 className="text-lg font-semibold text-ink">{product.name}</h3>
           </Link>
-          <span className="inline-flex rounded-full bg-gold px-3 py-1 text-[10px] font-semibold text-midnight">
-            Best seller
-          </span>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex rounded-full bg-gold px-3 py-1 text-[10px] font-semibold text-midnight">
+              Best seller
+            </span>
+            {minPack?.onSale ? (
+              <span className="inline-flex rounded-full bg-red-600 px-3 py-1 text-[10px] font-semibold text-white">
+                Sale
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <p className="mt-2 text-sm text-muted">
           {showPack ? (
             <>
-              <span className="font-semibold text-ink">{minPack.label}</span> / ₹{minPack.price}
+              <span className="font-semibold text-ink">{minPack.label}</span> / ₹{minPack.effectivePrice}
+              {minPack.onSale ? <span className="ml-2 line-through">₹{minPack.price}</span> : null}
             </>
           ) : (
             <>₹{product.price}</>
@@ -358,7 +378,7 @@ function Explore() {
 
       <footer className="bg-midnight px-6 py-14 text-white">
         <div className="mx-auto w-full max-w-6xl">
-          <h2 className="font-display text-2xl">Kannauj Attars</h2>
+          <h2 className="font-display text-2xl">{BUSINESS.displayName}</h2>
           <p className="mt-2 text-sm text-white/75">Modern presentation of traditional perfumery.</p>
         </div>
       </footer>

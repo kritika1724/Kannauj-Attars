@@ -21,7 +21,7 @@ function Ceo() {
               {BUSINESS.founderTitle}
             </p>
             <p className="mt-6 text-sm text-muted">
-              Kannauj Attars is built on heritage craft and modern reliability — serving personal buyers as well as trade
+              {BUSINESS.displayName} is built on heritage craft and modern reliability — serving personal buyers as well as trade
               and bulk requirements with a consistent focus on purity and finish.
             </p>
 
@@ -102,7 +102,7 @@ function Ceo() {
           <div className="rounded-3xl border border-slate-200/80 bg-white p-8 shadow-lg shadow-black/10">
             <h2 className="text-xl font-semibold text-ink">About</h2>
             <p className="mt-4 text-sm leading-relaxed text-muted">
-              Founded in 1998, Kannauj Attars is a private enterprise based in Kannauj — widely recognized as India’s
+              Founded in 1998, {BUSINESS.displayName} is a private enterprise based in Kannauj — widely recognized as India’s
               perfume heritage city. Under the leadership of Mr. Pawan Trivedi, the focus remains on consistent quality,
               thoughtful blending, and reliable supply.
             </p>
@@ -161,7 +161,7 @@ function Ceo() {
 
       <footer className="bg-midnight px-6 py-14 text-white">
         <div className="mx-auto w-full max-w-6xl">
-          <h2 className="font-display text-2xl">Kannauj Attars</h2>
+          <h2 className="font-display text-2xl">{BUSINESS.displayName}</h2>
           <p className="mt-2 text-sm text-white/75">Leadership rooted in heritage craft.</p>
         </div>
       </footer>

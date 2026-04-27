@@ -11,6 +11,7 @@ const orderItemSchema = new mongoose.Schema(
     qty: { type: Number, required: true, min: 1 },
     price: { type: Number, required: true },
     image: { type: String, default: '' },
+    sample: { type: Boolean, default: false },
     pack: {
       label: { type: String, default: '' },
     },

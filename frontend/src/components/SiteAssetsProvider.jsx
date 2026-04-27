@@ -70,7 +70,7 @@ export function SiteAssetsProvider({ children }) {
   }, [])
 
   const uploadAndSetAsset = useCallback(async (key, file) => {
-    const uploaded = await api.uploadImage(file)
+    const uploaded = await api.uploadMedia(file)
     const url = uploaded.url || uploaded.absoluteUrl
     await setAssetUrl(key, url)
     return url

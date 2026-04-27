@@ -16,21 +16,29 @@ const productSchema = new mongoose.Schema(
     // Smart discovery tags (store ids/slugs, e.g. "daily_wear", "floral")
     purposeTags: { type: [String], default: [] },
     familyTags: { type: [String], default: [] },
+    featuredCollections: { type: [String], default: [] },
     // Curated on Explore/Home by admin (manual best-seller list)
     isBestSeller: { type: Boolean, default: false },
     isNewArrival: { type: Boolean, default: false },
+    sample: {
+      enabled: { type: Boolean, default: false },
+      label: { type: String, default: '' },
+      price: { type: Number, default: 0 },
+    },
     price: { type: Number, required: true },
     packs: {
       type: [
         {
           label: { type: String, required: true }, // e.g. "200 gm", "1 kg", "10 kg"
           price: { type: Number, required: true },
+          salePrice: { type: Number, default: null },
           stock: { type: Number, default: 0 },
         },
       ],
       default: [],
     },
     images: { type: [String], default: [] },
+    imageZoom: { type: Number, default: 1, min: 1, max: 2.5 },
     stock: { type: Number, default: 0 },
     highlights: { type: [String], default: [] },
     rating: { type: Number, default: 0 },
@@ -44,9 +52,11 @@ productSchema.index({ category: 1, createdAt: -1 })
 productSchema.index({ buyerType: 1, createdAt: -1 })
 productSchema.index({ isBestSeller: 1, createdAt: -1 })
 productSchema.index({ isNewArrival: 1, createdAt: -1 })
+productSchema.index({ 'sample.enabled': 1 })
 productSchema.index({ price: 1 })
 productSchema.index({ rating: -1 })
 productSchema.index({ purposeTags: 1 })
 productSchema.index({ familyTags: 1 })
+productSchema.index({ featuredCollections: 1 })
 
 module.exports = mongoose.model('Product', productSchema)

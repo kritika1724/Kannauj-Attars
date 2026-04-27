@@ -231,7 +231,7 @@ function TrackOrder() {
                             <p className="text-sm font-semibold text-ink">{item.name}</p>
                             <p className="mt-1 text-xs text-muted">
                               Qty: {item.qty}
-                              {item.pack?.label ? ` • ${item.pack.label}` : ''}
+                              {item.pack?.label ? ` • ${item.sample ? 'Sample' : 'Pack'}: ${item.pack.label}` : ''}
                             </p>
                           </div>
                           <p className="text-sm font-semibold text-ink">₹{item.qty * item.price}</p>

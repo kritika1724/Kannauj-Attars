@@ -29,6 +29,11 @@ const saveCart = (state) => {
   })
 }
 
+const sameCartItem = (a, b) =>
+  a.product === b.product &&
+  (a.packLabel || '') === (b.packLabel || '') &&
+  (a.isSample === true) === (b.isSample === true)
+
 const initial = DEFAULT_CART_STATE
 
 const cartSlice = createSlice({
@@ -45,9 +50,7 @@ const cartSlice = createSlice({
     },
     addToCart(state, action) {
       const item = action.payload
-      const existing = state.items.find(
-        (x) => x.product === item.product && (x.packLabel || '') === (item.packLabel || '')
-      )
+      const existing = state.items.find((x) => sameCartItem(x, item))
       if (existing) {
         existing.qty = Math.min(existing.qty + item.qty, 99)
       } else {
@@ -56,21 +59,31 @@ const cartSlice = createSlice({
       saveCart(state)
     },
     updateQty(state, action) {
-      const { product, qty, packLabel = '' } = action.payload
-      const existing = state.items.find((x) => x.product === product && (x.packLabel || '') === packLabel)
+      const { product, qty, packLabel = '', isSample = false } = action.payload
+      const existing = state.items.find(
+        (x) =>
+          x.product === product &&
+          (x.packLabel || '') === packLabel &&
+          (x.isSample === true) === (isSample === true)
+      )
       if (existing) {
         existing.qty = Math.max(1, Math.min(Number(qty || 1), 99))
       }
       saveCart(state)
     },
     removeFromCart(state, action) {
-      const { product, packLabel = '' } = action.payload || {}
+      const { product, packLabel = '', isSample = false } = action.payload || {}
       // Backward-compatible: if a string id is passed, remove all packs for that product.
       if (typeof action.payload === 'string') {
         state.items = state.items.filter((x) => x.product !== action.payload)
       } else {
         state.items = state.items.filter(
-          (x) => !(x.product === product && (x.packLabel || '') === packLabel)
+          (x) =>
+            !(
+              x.product === product &&
+              (x.packLabel || '') === packLabel &&
+              (x.isSample === true) === (isSample === true)
+            )
         )
       }
       saveCart(state)

@@ -1,14 +1,49 @@
 export const BUSINESS = {
   name: 'Kannauj Attars',
+  displayName: 'Kannauj Attars™',
+  firmName: 'Kannauj Attars - 1998',
+  displayFirmName: 'Kannauj Attars™ - 1998',
   since: 1998,
   email: 'kannaujattars@yahoo.com',
   emails: ['kannaujattars@yahoo.com'],
   phones: ['+91-9415124521', '+91-7007627057'],
   founder: 'Mr. Pawan Trivedi',
   founderTitle:
-    'Founder, Kannauj Attars (since 1998) | President, The Attars & Perfumers Association Kannauj',
+    'Founder, Kannauj Attars - 1998 | President, The Attars & Perfumers Association Kannauj',
   about:
-    "Kannauj Attars is a private enterprise founded in 1998 in Kannauj, India - home to one of the country's oldest perfume traditions. Rooted in heritage distillation and crafted with modern consistency, we serve both personal buyers and bulk/trade requirements with the same focus on quality, clarity, and lasting character.",
+    "Kannauj Attars - 1998 is a private enterprise founded in Kannauj, India - home to one of the country's oldest perfume traditions. Rooted in heritage distillation and crafted with modern consistency, we serve both personal buyers and bulk/trade requirements with the same focus on quality, clarity, and lasting character.",
+  legacyIntro:
+    'Rooted in the timeless legacy of Kannauj, our journey in perfumery spans generations. From the era of Sundar Lal Suraj Narayan to Laxmi Narayan Trivedi in 1930, the tradition of crafting natural fragrances has been carefully preserved and passed down.',
+  legacyTimeline: [
+    {
+      year: 'Family legacy',
+      title: 'Sundar Lal Suraj Narayan',
+      copy:
+        'The family fragrance journey traces back to an earlier generation deeply connected to Kannauj perfumery and natural aromatic trade.',
+    },
+    {
+      year: '1930',
+      title: 'Laxmi Narayan Trivedi',
+      copy:
+        'The tradition of crafting natural fragrances continued with care, discipline, and a strong respect for Kannauj’s artisan methods.',
+    },
+    {
+      year: '1998',
+      title: 'Kannauj Attars established',
+      copy:
+        'Pawan Trivedi founded Kannauj Attars, carrying this heritage into the modern era while preserving authenticity and craft.',
+    },
+    {
+      year: '2015-16',
+      title: 'Flower & Fragrance Company',
+      copy:
+        'The business expanded into Flower & Fragrance Company, continuing to evolve while staying true to its original roots.',
+    },
+  ],
+  craftNote:
+    'Every fragrance we create is handcrafted in Kannauj using the ancient Deg-Bhapka distillation technique, a traditional method that has remained respected for over 1000 years.',
+  giNote:
+    "Our products are GI-tagged, reinforcing authenticity, purity, and a genuine connection to India's perfume heritage.",
   associations: [
     { name: 'Essential Association of India', location: 'Noida' },
     { name: 'The Attars & Perfumers Association Kannauj', location: 'Kannauj' },

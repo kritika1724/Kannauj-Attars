@@ -1,13 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 const getMinPack = (packs = []) => {
   const normalized = packs
-    .map((p) => ({ label: (p.label || '').trim(), price: Number(p.price) }))
-    .filter((p) => p.label && !Number.isNaN(p.price))
+    .map((p) => {
+      const price = Number(p.price)
+      const salePrice = p.salePrice === null || p.salePrice === undefined || p.salePrice === '' ? null : Number(p.salePrice)
+      const onSale = Number.isFinite(salePrice) && salePrice > 0 && Number.isFinite(price) && salePrice < price
+      return {
+        label: (p.label || '').trim(),
+        price,
+        salePrice: onSale ? salePrice : null,
+        effectivePrice: onSale ? salePrice : price,
+        onSale,
+      }
+    })
+    .filter((p) => p.label && !Number.isNaN(p.effectivePrice))
   if (!normalized.length) return null
-  return normalized.reduce((min, p) => (p.price < min.price ? p : min), normalized[0])
+  return normalized.reduce((min, p) => (p.effectivePrice < min.effectivePrice ? p : min), normalized[0])
 }
 
 const packToGrams = (label) => {
@@ -25,37 +36,35 @@ const isBulkPack = (label) => {
 }
 
 function AddToCartModal({ open, product, onClose, onConfirm }) {
-  const navigate = useNavigate()
   const packs = Array.isArray(product?.packs) ? product.packs : []
   const minPack = useMemo(() => getMinPack(packs), [packs])
   const [packLabel, setPackLabel] = useState('')
   const [qty, setQty] = useState(1)
-  const [buyerType, setBuyerType] = useState('personal') // personal | industrial
 
   useEffect(() => {
     if (!open) return
     setQty(1)
     const initialLabel = minPack?.label || (packs?.[0]?.label || '')
     setPackLabel(initialLabel)
-    setBuyerType(isBulkPack(initialLabel) ? 'industrial' : 'personal')
   }, [open, minPack?.label, packs])
 
   const selectedPack = useMemo(() => {
     if (!packLabel) return null
-    return packs.find((p) => (p.label || '').trim() === packLabel) || null
+    const pack = packs.find((p) => (p.label || '').trim() === packLabel) || null
+    if (!pack) return null
+    const price = Number(pack.price)
+    const salePrice = pack.salePrice === null || pack.salePrice === undefined || pack.salePrice === '' ? null : Number(pack.salePrice)
+    const onSale = Number.isFinite(salePrice) && salePrice > 0 && Number.isFinite(price) && salePrice < price
+    return {
+      ...pack,
+      price,
+      salePrice: onSale ? salePrice : null,
+      effectivePrice: onSale ? salePrice : price,
+      onSale,
+    }
   }, [packs, packLabel])
 
   const bulkPackSelected = isBulkPack(selectedPack?.label || packLabel)
-  const retailFallbackLabel = useMemo(() => {
-    const firstRetail = packs.find((p) => !isBulkPack(p.label))
-    return firstRetail?.label || ''
-  }, [packs])
-
-  useEffect(() => {
-    if (!open) return
-    // If user selects a bulk pack size, force inquiry flow.
-    if (bulkPackSelected) setBuyerType('industrial')
-  }, [bulkPackSelected, open])
 
   if (!open || !product) return null
 
@@ -75,7 +84,10 @@ function AddToCartModal({ open, product, onClose, onConfirm }) {
             <p className="mt-2 text-sm text-muted">
               {selectedPack ? (
                 <>
-                  {selectedPack.label} • <span className="font-semibold text-ink">₹{selectedPack.price}</span>
+                  {selectedPack.label} • <span className="font-semibold text-ink">₹{selectedPack.effectivePrice || selectedPack.price}</span>
+                  {selectedPack.onSale ? (
+                    <span className="text-xs font-semibold text-muted line-through">₹{selectedPack.price}</span>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -103,7 +115,12 @@ function AddToCartModal({ open, product, onClose, onConfirm }) {
             >
               {packs.map((p) => (
                 <option key={p.label} value={p.label}>
-                  {p.label} — ₹{p.price}
+                  {p.label} — ₹
+                  {(() => {
+                    const regularPrice = Number(p.price)
+                    const salePrice = p.salePrice === null || p.salePrice === undefined || p.salePrice === '' ? null : Number(p.salePrice)
+                    return Number.isFinite(salePrice) && salePrice > 0 && salePrice < regularPrice ? salePrice : regularPrice
+                  })()}
                 </option>
               ))}
             </select>
@@ -122,89 +139,41 @@ function AddToCartModal({ open, product, onClose, onConfirm }) {
           />
         </div>
 
-        <div className="mt-5">
-          <p className="text-xs font-semibold text-muted">Buying for</p>
-          <div className="mt-2 flex items-center gap-2 rounded-full border border-slate-200 bg-white p-1">
-            <button
-              type="button"
-              onClick={() => setBuyerType('personal')}
-              disabled={bulkPackSelected}
-              className={`flex-1 rounded-full px-4 py-2 text-xs font-semibold transition ${
-                buyerType === 'personal' ? 'bg-ember text-white' : 'text-emberDark hover:bg-clay/60'
-              } ${bulkPackSelected ? 'cursor-not-allowed opacity-60' : ''}`}
-            >
-              Personal
-            </button>
-            <button
-              type="button"
-              onClick={() => setBuyerType('industrial')}
-              className={`flex-1 rounded-full px-4 py-2 text-xs font-semibold transition ${
-                buyerType === 'industrial' ? 'bg-ember text-white' : 'text-emberDark hover:bg-clay/60'
-              }`}
-            >
-              Bulk / Industrial
-            </button>
-          </div>
-
-          {buyerType === 'industrial' ? (
-            <div className="mt-4 rounded-2xl border border-gold/25 bg-clay/60 p-4">
-              <p className="text-sm font-semibold text-ink">Bulk / industrial inquiry</p>
-              <p className="mt-2 text-sm text-muted">
-                For bulk/industrial orders, pricing and availability are usually shared on inquiry. Would you like to
-                contact us directly?
-              </p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const packsList = Array.isArray(product?.packs) ? product.packs : []
-                    const chosen = packLabel
-                      ? packsList.find((x) => (x.label || '').trim() === packLabel)
-                      : null
-                    const price = chosen ? chosen.price : product?.price
-
-                    navigate('/contact', {
-                      state: {
-                        intent: 'bulk',
-                        product: {
-                          id: product?._id,
-                          name: product?.name,
-                          packLabel: packsList.length ? packLabel : '',
-                          qty,
-                          price,
-                        },
-                      },
-                    })
-                    onClose?.()
-                  }}
-                  className="ka-btn-primary px-5 py-2"
-                >
-                  Contact us
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (bulkPackSelected) {
-                      if (retailFallbackLabel) setPackLabel(retailFallbackLabel)
-                      setBuyerType('personal')
-                      return
-                    }
-                    setBuyerType('personal')
-                  }}
-                  className="ka-btn-ghost px-5 py-2"
-                >
-                  {bulkPackSelected ? 'Choose smaller pack' : 'Continue purchase'}
-                </button>
-              </div>
-            </div>
-          ) : null}
+        <div className="mt-5 rounded-2xl border border-gold/20 bg-clay/50 p-4">
+          <p className="text-sm font-semibold text-ink">Bulk orders</p>
+          <p className="mt-2 text-sm text-muted">
+            For bulk requirements, please contact us directly for pricing and availability.
+          </p>
+          <Link
+            to="/contact"
+            state={{
+              intent: 'bulk',
+              product: {
+                id: product?._id,
+                name: product?.name,
+                packLabel: packs.length ? packLabel : '',
+                qty,
+                price: selectedPack?.effectivePrice || product?.price,
+              },
+            }}
+            onClick={() => onClose?.()}
+            className="mt-4 inline-flex rounded-full border border-gold/25 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-emberDark transition hover:border-gold/50 hover:bg-clay/60"
+          >
+            Contact for bulk
+          </Link>
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => onConfirm({ packLabel: packs.length ? packLabel : '', qty })}
-            disabled={buyerType === 'industrial' || bulkPackSelected}
+            onClick={() =>
+              onConfirm({
+                packLabel: packs.length ? packLabel : '',
+                qty,
+                isSample: false,
+              })
+            }
+            disabled={bulkPackSelected}
             className="flex-1 rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white transition hover:bg-emberDark disabled:cursor-not-allowed disabled:opacity-60"
           >
             Add to cart

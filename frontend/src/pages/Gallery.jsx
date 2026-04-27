@@ -83,7 +83,7 @@ function ExtraPhotosGrid({ title, prefix, description = '' }) {
           {description ? <p className="mt-2 text-sm text-muted">{description}</p> : null}
         </div>
         {isAdmin ? (
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-ember px-5 py-2 text-xs font-semibold text-white transition hover:bg-emberDark">
+          <label className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white transition rounded-full cursor-pointer bg-ember hover:bg-emberDark">
             <FiPlus />
             Add photo
             <input
@@ -101,9 +101,9 @@ function ExtraPhotosGrid({ title, prefix, description = '' }) {
 
       {message ? <p className="mt-4 text-sm font-semibold text-emberDark">{message}</p> : null}
 
-      <div className="mt-6 grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 mt-6 md:grid-cols-3">
         {keys.map((key) => (
-          <div key={key} className="relative rounded-3xl border border-slate-200/80 bg-white p-4 shadow-sm">
+          <div key={key} className="relative p-4 bg-white border shadow-sm rounded-3xl border-slate-200/80">
             <AdminAssetImage
               assetKey={key}
               className="ka-frame ka-mediaBg aspect-[4/3] w-full"
@@ -116,7 +116,7 @@ function ExtraPhotosGrid({ title, prefix, description = '' }) {
                 type="button"
                 disabled={busy}
                 onClick={() => onRemove(key)}
-                className="mt-4 inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                className="inline-flex items-center gap-2 px-4 py-2 mt-4 text-xs font-semibold text-red-600 bg-white border border-red-200 rounded-full hover:bg-red-50 disabled:opacity-60"
                 title="Remove photo"
               >
                 <FiTrash2 />
@@ -242,8 +242,8 @@ function Gallery() {
 
   return (
     <div className="min-h-screen bg-sand">
-      <header className="px-6 pb-12 pt-12">
-        <div className="mx-auto w-full max-w-6xl">
+      <header className="px-6 pt-12 pb-12">
+        <div className="w-full max-w-6xl mx-auto">
           <motion.div
             initial="hidden"
             animate="show"
@@ -253,21 +253,21 @@ function Gallery() {
           >
             <p className="ka-kicker">Gallery</p>
             <h1 className="mt-4 ka-h1">
-              Spaces, heritage, and craft — Kannauj Attars
+              Spaces, heritage, and craft — {BUSINESS.displayName}
             </h1>
-            <p className="mt-4 ka-lead">
+            {/* <p className="mt-4 ka-lead">
               Add your own photos anytime. If you are logged in as admin, you will see an upload
               button directly on each image block.
-            </p>
+            </p> */}
           </motion.div>
         </div>
       </header>
 
       <section className="px-6 pb-16">
-        <div className="mx-auto w-full max-w-6xl">
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div className="w-full max-w-6xl mx-auto">
+          <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
             <div>
-              <p className="ka-kicker">Section</p>
+              {/* <p className="ka-kicker">Section</p> */}
               <h2 className="mt-3 ka-h2">Offices</h2>
               <p className="mt-3 text-sm text-muted">
                 Two locations — one rooted in Kannauj, one for Mumbai trade and distribution.
@@ -275,14 +275,14 @@ function Gallery() {
             </div>
             <Link
               to="/contact"
-              className="ka-btn-primary px-5 py-2"
+              className="px-5 py-2 ka-btn-primary"
             >
               Contact us
             </Link>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <article className="ka-card p-6">
+            <article className="p-6 ka-card">
               <AdminAssetImage
                 assetKey="gallery.office.kannauj"
                 className="ka-frame aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(17,27,58,0.14),rgba(255,255,255,0.92),rgba(201,162,74,0.22))]"
@@ -293,7 +293,7 @@ function Gallery() {
               <p className="mt-2 text-sm text-muted">{BUSINESS.offices.kannauj.address}</p>
             </article>
 
-            <article className="ka-card p-6">
+            <article className="p-6 ka-card">
               <AdminAssetImage
                 assetKey="gallery.office.mumbai"
                 className="ka-frame aspect-[16/10] w-full bg-[linear-gradient(135deg,rgba(201,162,74,0.20),rgba(255,255,255,0.94),rgba(17,27,58,0.12))]"
@@ -314,8 +314,8 @@ function Gallery() {
       </section>
 
       <section className="px-6 pb-20">
-        <div className="mx-auto w-full max-w-6xl">
-          <div className="mb-8 max-w-3xl">
+        <div className="w-full max-w-6xl mx-auto">
+          <div className="max-w-3xl mb-8">
             <p className="ka-kicker">Section</p>
             <h2 className="mt-3 ka-h2">Factory & Craft</h2>
             <p className="mt-3 text-sm text-muted">
@@ -324,7 +324,7 @@ function Gallery() {
           </div>
 
           <div className="grid gap-6">
-            <div className="ka-card p-6">
+            <div className="p-6 ka-card">
               <AdminAssetImage
                 assetKey="gallery.factory.main"
                 className="ka-frame aspect-[16/9] w-full bg-[radial-gradient(circle_at_top,rgba(201,162,74,0.26),rgba(255,255,255,0.94))]"
@@ -344,7 +344,7 @@ function Gallery() {
             description="Add extra factory photos (workshop, tools, blending, resting, quality checks, dispatch)."
           />
 
-          <div className="mt-6 grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 mt-6 md:grid-cols-3">
             {[
               {
                 key: 'gallery.factory.distillation',
@@ -367,7 +367,7 @@ function Gallery() {
             ].map((card) => (
               <article
                 key={card.key}
-                className="ka-card p-6"
+                className="p-6 ka-card"
               >
                 <AdminAssetImage
                   assetKey={card.key}
@@ -401,8 +401,8 @@ function Gallery() {
 
       {isAdmin || dynamicSections.length > 0 ? (
         <section className="px-6 pb-20">
-          <div className="mx-auto w-full max-w-6xl">
-            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="w-full max-w-6xl mx-auto">
+            <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
               <div>
                 <p className="ka-kicker">Section</p>
                 <h2 className="mt-3 ka-h2">More topics</h2>
@@ -416,7 +416,7 @@ function Gallery() {
                 <button
                   type="button"
                   onClick={() => setNewOpen((v) => !v)}
-                  className="inline-flex items-center gap-2 rounded-full bg-ember px-5 py-2 text-xs font-semibold text-white transition hover:bg-emberDark"
+                  className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white transition rounded-full bg-ember hover:bg-emberDark"
                 >
                   <FiPlus />
                   Add new topic
@@ -425,7 +425,7 @@ function Gallery() {
             </div>
 
             {newOpen && isAdmin ? (
-              <div className="mb-10 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
+              <div className="p-6 mb-10 bg-white border shadow-sm rounded-3xl border-slate-200/80">
                 <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Topic title</label>
@@ -433,7 +433,7 @@ function Gallery() {
                       value={newTitle}
                       onChange={(e) => setNewTitle(e.target.value)}
                       placeholder="e.g., Dispatch & Packaging"
-                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/15"
+                      className="w-full px-4 py-3 mt-2 text-sm font-semibold bg-white border rounded-2xl border-slate-200 text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/15"
                     />
                   </div>
                   <div>
@@ -444,7 +444,7 @@ function Gallery() {
                       value={newDesc}
                       onChange={(e) => setNewDesc(e.target.value)}
                       placeholder="1 line about what photos belong here"
-                      className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/15"
+                      className="w-full px-4 py-3 mt-2 text-sm bg-white border rounded-2xl border-slate-200 text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/15"
                     />
                   </div>
                   <div className="flex gap-3">
@@ -452,7 +452,7 @@ function Gallery() {
                       type="button"
                       disabled={dynBusy}
                       onClick={createTopic}
-                      className="rounded-full bg-ember px-5 py-3 text-sm font-semibold text-white transition hover:bg-emberDark disabled:opacity-60"
+                      className="px-5 py-3 text-sm font-semibold text-white transition rounded-full bg-ember hover:bg-emberDark disabled:opacity-60"
                     >
                       Create
                     </button>
@@ -460,7 +460,7 @@ function Gallery() {
                       type="button"
                       disabled={dynBusy}
                       onClick={() => setNewOpen(false)}
-                      className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-emberDark transition hover:border-gold/40 hover:bg-clay/60 disabled:opacity-60"
+                      className="px-5 py-3 text-sm font-semibold transition bg-white border rounded-full border-slate-200 text-emberDark hover:border-gold/40 hover:bg-clay/60 disabled:opacity-60"
                     >
                       Cancel
                     </button>
@@ -477,7 +477,7 @@ function Gallery() {
               {dynamicSections.map((section) => (
                 <div
                   key={section._id}
-                  className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-lg shadow-black/10"
+                  className="p-6 bg-white border shadow-lg rounded-3xl border-slate-200/80 shadow-black/10"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0">
@@ -489,7 +489,7 @@ function Gallery() {
 
                     {isAdmin ? (
                       <div className="flex flex-wrap items-center gap-3">
-                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-ember px-5 py-2 text-xs font-semibold text-white transition hover:bg-emberDark">
+                        <label className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white transition rounded-full cursor-pointer bg-ember hover:bg-emberDark">
                           <FiPlus />
                           Add photo
                           <input
@@ -508,7 +508,7 @@ function Gallery() {
                           type="button"
                           disabled={dynBusy}
                           onClick={() => removeTopic(section._id)}
-                          className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                          className="px-5 py-2 text-xs font-semibold text-red-600 bg-white border border-red-200 rounded-full hover:bg-red-50 disabled:opacity-60"
                         >
                           Delete topic
                         </button>
@@ -517,11 +517,11 @@ function Gallery() {
                   </div>
 
                   {Array.isArray(section.photos) && section.photos.length > 0 ? (
-                    <div className="mt-6 grid gap-6 md:grid-cols-3">
+                    <div className="grid gap-6 mt-6 md:grid-cols-3">
                       {section.photos.map((p) => (
                         <div
                           key={p._id}
-                          className="rounded-3xl border border-slate-200/80 bg-clay/40 p-4 shadow-sm"
+                          className="p-4 border shadow-sm rounded-3xl border-slate-200/80 bg-clay/40"
                         >
                           <a
                             href={toAssetUrl(p.url, import.meta.env.VITE_API_ASSET)}
@@ -534,7 +534,7 @@ function Gallery() {
                               <img
                                 src={toAssetUrl(p.url, import.meta.env.VITE_API_ASSET)}
                                 alt={section.title}
-                                className="h-full w-full bg-white object-contain p-3"
+                                className="object-contain w-full h-full p-3 bg-white"
                                 loading="lazy"
                               />
                             </div>
@@ -545,7 +545,7 @@ function Gallery() {
                               type="button"
                               disabled={dynBusy}
                               onClick={() => removePhoto(p._id)}
-                              className="mt-4 inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                              className="inline-flex items-center gap-2 px-4 py-2 mt-4 text-xs font-semibold text-red-600 bg-white border border-red-200 rounded-full hover:bg-red-50 disabled:opacity-60"
                             >
                               <FiTrash2 />
                               Remove
@@ -563,7 +563,7 @@ function Gallery() {
               ))}
 
               {dynamicSections.length === 0 && !dynLoading ? (
-                <div className="rounded-3xl border border-slate-200/80 bg-white p-8 text-sm text-muted shadow-sm">
+                <div className="p-8 text-sm bg-white border shadow-sm rounded-3xl border-slate-200/80 text-muted">
                   {isAdmin
                     ? 'No custom topics yet. Click “Add new topic” to create one.'
                     : 'No extra gallery topics available right now.'}
@@ -574,9 +574,9 @@ function Gallery() {
         </section>
       ) : null}
 
-      <footer className="bg-midnight px-6 py-14 text-white">
-        <div className="mx-auto w-full max-w-6xl">
-          <h2 className="font-display text-2xl">Kannauj Attars</h2>
+      <footer className="px-6 text-white bg-midnight py-14">
+        <div className="w-full max-w-6xl mx-auto">
+          <h2 className="text-2xl font-display">{BUSINESS.displayName}</h2>
           <p className="mt-2 text-sm text-white/75">Add photos anytime — we’ll keep it polished and fast.</p>
         </div>
       </footer>

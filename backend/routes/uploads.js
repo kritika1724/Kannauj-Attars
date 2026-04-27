@@ -18,6 +18,10 @@ const router = express.Router()
 const uploadsDir = path.join(__dirname, '..', 'uploads')
 fs.mkdirSync(uploadsDir, { recursive: true })
 
+const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.avif']
+const VIDEO_EXTS = ['.mp4', '.webm', '.mov', '.m4v', '.ogg']
+const HEIC_EXTS = ['.heic', '.heif']
+
 const getCloudinaryConfig = () => {
   const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || '').trim()
   const apiKey = String(process.env.CLOUDINARY_API_KEY || '').trim()
@@ -31,6 +35,7 @@ const getCloudinaryConfig = () => {
 const uploadToCloudinary = async ({ buffer, filename, mimeType }) => {
   const cfg = getCloudinaryConfig()
   if (!cfg) return null
+  const resourceType = String(mimeType || '').startsWith('video/') ? 'video' : 'image'
 
   const timestamp = Math.floor(Date.now() / 1000)
   const folder = String(process.env.CLOUDINARY_FOLDER || 'kannauj-attars').trim()
@@ -50,7 +55,7 @@ const uploadToCloudinary = async ({ buffer, filename, mimeType }) => {
   form.append('public_id', publicId)
   form.append('signature', signature)
 
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`, {
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/${resourceType}/upload`, {
     method: 'POST',
     body: form,
   })
@@ -82,33 +87,55 @@ const saveLocally = ({ buffer, filename, req }) => {
   }
 }
 
+const resolveUploadKind = (file) => {
+  const ext = path.extname(file?.originalname || '').toLowerCase()
+  const mimeType = String(file?.mimetype || '').toLowerCase()
+
+  if (mimeType.startsWith('video/') || VIDEO_EXTS.includes(ext)) {
+    return 'video'
+  }
+
+  if (
+    mimeType.startsWith('image/') ||
+    IMAGE_EXTS.includes(ext) ||
+    HEIC_EXTS.includes(ext) ||
+    mimeType === 'application/octet-stream'
+  ) {
+    return 'image'
+  }
+
+  return null
+}
+
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  if (resolveUploadKind(file)) {
     cb(null, true)
   } else {
-    cb(new Error('Only images are allowed'), false)
+    cb(new Error('Only image or video files are allowed'), false)
   }
 }
 
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter,
-  limits: { fileSize: 15 * 1024 * 1024 },
+  limits: { fileSize: 80 * 1024 * 1024 },
 })
 
 router.post('/', protect, adminOnly, (req, res) => {
-  upload.single('image')(req, res, async (err) => {
+  upload.any()(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ message: err.message || 'Upload failed' })
     }
 
     try {
-      if (!req.file) return res.status(400).json({ message: 'No file uploaded' })
+      const file = Array.isArray(req.files) ? req.files[0] : null
 
-      const originalExt = path.extname(req.file.originalname || '').toLowerCase()
+      if (!file) return res.status(400).json({ message: 'No file uploaded' })
+
+      const originalExt = path.extname(file.originalname || '').toLowerCase()
       const safeBase =
         path
-          .basename(req.file.originalname || 'image', originalExt)
+          .basename(file.originalname || 'file', originalExt)
           .replace(/[^\w\-]+/g, '-')
           .replace(/-+/g, '-')
           .slice(0, 60) || 'image'
@@ -116,13 +143,14 @@ router.post('/', protect, adminOnly, (req, res) => {
       const stamp = Date.now()
 
       let outExt = originalExt || '.jpg'
-      let outBuffer = req.file.buffer
+      let outBuffer = file.buffer
+      const detectedKind = resolveUploadKind(file)
+      const isVideo = detectedKind === 'video'
 
       const isHeic =
-        originalExt === '.heic' ||
-        originalExt === '.heif' ||
-        req.file.mimetype === 'image/heic' ||
-        req.file.mimetype === 'image/heif'
+        HEIC_EXTS.includes(originalExt) ||
+        file.mimetype === 'image/heic' ||
+        file.mimetype === 'image/heif'
 
       // Many browsers don't display HEIC directly. Convert if we can.
       if (isHeic) {
@@ -133,15 +161,20 @@ router.post('/', protect, adminOnly, (req, res) => {
           })
         }
         outExt = '.jpg'
-        outBuffer = await sharp(req.file.buffer).jpeg({ quality: 88 }).toBuffer()
+        outBuffer = await sharp(file.buffer).jpeg({ quality: 88 }).toBuffer()
       }
 
-      // Normalize allowed extensions
-      if (!['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.avif'].includes(outExt)) {
+      if (isVideo) {
+        if (!VIDEO_EXTS.includes(outExt)) {
+          return res.status(400).json({
+            message: 'Supported video formats: MP4, WEBM, MOV, M4V, OGG.',
+          })
+        }
+      } else if (!IMAGE_EXTS.includes(outExt)) {
         // Default to jpg so the browser can display it
         outExt = '.jpg'
         if (sharp) {
-          outBuffer = await sharp(req.file.buffer).jpeg({ quality: 88 }).toBuffer()
+          outBuffer = await sharp(file.buffer).jpeg({ quality: 88 }).toBuffer()
         }
       }
 
@@ -150,13 +183,14 @@ router.post('/', protect, adminOnly, (req, res) => {
         (await uploadToCloudinary({
           buffer: outBuffer,
           filename,
-          mimeType: req.file.mimetype,
+          mimeType: file.mimetype,
         })) || saveLocally({ buffer: outBuffer, filename, req })
 
       return res.status(201).json({
         url: uploaded.url,
         absoluteUrl: uploaded.absoluteUrl,
         provider: uploaded.provider,
+        kind: isVideo ? 'video' : 'image',
       })
     } catch (e) {
       return res.status(400).json({ message: e.message || 'Upload failed' })

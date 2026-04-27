@@ -10,6 +10,7 @@ import { BUSINESS } from '../config/business'
 const schema = yup.object({
   name: yup.string().required('Please enter your name.'),
   email: yup.string().email('Enter a valid email.').required('Email is required.'),
+  requiredQuantity: yup.string().default(''),
   message: yup.string().required('Tell us what you are looking for.'),
 })
 
@@ -27,9 +28,14 @@ function Contact() {
     reset,
     setValue,
     getValues,
+    setError,
+    clearErrors,
   } = useForm({
     resolver: yupResolver(schema),
   })
+
+  const bulkProductIntent =
+    location?.state?.intent === 'bulk' && Boolean(location?.state?.product?.name)
 
   useEffect(() => {
     const onAuth = () => setUser(auth.getUser())
@@ -54,12 +60,8 @@ function Contact() {
         }
       }
 
-      const pack = p.packLabel ? `Pack: ${p.packLabel}` : ''
-      const qty = p.qty ? `Qty: ${p.qty}` : ''
-      const price = p.price ? `Current price shown: ₹${p.price}` : ''
       const lines = [
         `Hi, I want a bulk/industrial inquiry for: ${p.name}.`,
-        [pack, qty, price].filter(Boolean).join(' • '),
         '',
         'Please share bulk pricing, availability, lead time, and shipping details.',
       ].filter(Boolean)
@@ -68,7 +70,7 @@ function Contact() {
         intent: 'bulk',
         title: 'Bulk / industrial',
         description:
-          'The form is pre-filled with product details. Add your name and email, then send.',
+          'The form is pre-filled with the product context. Add your required quantity, name, and email, then send.',
         message: lines.join('\n'),
       }
     }
@@ -156,7 +158,31 @@ function Contact() {
     try {
       setLoading(true)
       setStatus('')
-      await api.submitContact(data)
+      if (bulkProductIntent && !String(data.requiredQuantity || '').trim()) {
+        setError('requiredQuantity', {
+          type: 'manual',
+          message: 'Please tell us how much you need.',
+        })
+        setLoading(false)
+        return
+      }
+
+      clearErrors('requiredQuantity')
+
+      const finalMessage = bulkProductIntent
+        ? [
+            `Required quantity: ${String(data.requiredQuantity || '').trim()}`,
+            '',
+            String(data.message || '').trim(),
+          ]
+            .filter(Boolean)
+            .join('\n')
+        : data.message
+
+      await api.submitContact({
+        ...data,
+        message: finalMessage,
+      })
       setSubmitted(true)
       try {
         localStorage.setItem(
@@ -181,16 +207,16 @@ function Contact() {
 
   if (isAdmin) {
     return (
-      <div className="min-h-screen bg-sand px-6 py-16">
-        <div className="mx-auto w-full max-w-2xl rounded-3xl border border-slate-200/80 bg-white p-8 shadow-lg shadow-black/10">
+      <div className="min-h-screen px-6 py-16 bg-sand">
+        <div className="w-full max-w-2xl p-8 mx-auto bg-white border shadow-lg rounded-3xl border-slate-200/80 shadow-black/10">
           <p className="text-xs uppercase tracking-[0.35em] text-muted">Admin</p>
-          <h1 className="mt-4 font-display text-3xl text-ink">Contact Inbox</h1>
+          <h1 className="mt-4 text-3xl font-display text-ink">Contact Inbox</h1>
           <p className="mt-3 text-sm text-muted">
             Admins don’t need the public contact form. Review customer inquiries in the inbox.
           </p>
           <a
             href="/admin/contacts"
-            className="mt-6 inline-flex rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white"
+            className="inline-flex px-6 py-3 mt-6 text-sm font-semibold text-white rounded-full bg-ember"
           >
             View contact requests →
           </a>
@@ -201,23 +227,23 @@ function Contact() {
 
   return (
     <div className="bg-sand">
-      <header className="px-6 pb-12 pt-12">
-        <div className="mx-auto w-full max-w-6xl">
+      <header className="px-6 pt-12 pb-12">
+        <div className="w-full max-w-6xl mx-auto">
           <p className="ka-kicker">Get in touch</p>
           <h1 className="mt-4 ka-h1">
             Talk to us about attars and aromatics.
           </h1>
           <p className="mt-4 ka-lead">
-            Reach out for wholesale inquiries, private labeling, or custom blends.
+            Reach out for wholesale inquiries, private labeling, custom blends, or gifting options tailored for special occasions.
           </p>
         </div>
       </header>
 
-      <section className="bg-sand px-6 py-16">
+      <section className="px-6 py-16 bg-sand">
         <div className="mx-auto grid w-full max-w-6xl gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           {prefill ? (
             <div className="lg:col-span-2">
-              <div className="rounded-3xl border border-gold/25 bg-clay/60 p-6 shadow-sm">
+              <div className="p-6 border shadow-sm rounded-3xl border-gold/25 bg-clay/60">
                 <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">
                   {prefill?.title || 'Inquiry'}
                 </p>
@@ -227,7 +253,7 @@ function Contact() {
           ) : null}
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="rounded-3xl border border-slate-200/80 bg-clay/70 p-8 shadow-sm"
+            className="p-8 border shadow-sm rounded-3xl border-slate-200/80 bg-clay/70"
           >
             <div className="grid gap-5">
               <div>
@@ -235,7 +261,7 @@ function Contact() {
                 <input
                   {...register('name')}
                   placeholder="Your full name"
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                  className="w-full px-4 py-3 mt-2 text-sm bg-white border rounded-xl border-slate-200 text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
                 />
                 {errors.name && <p className="mt-2 text-xs text-red-600">{errors.name.message}</p>}
               </div>
@@ -244,17 +270,33 @@ function Contact() {
                 <input
                   {...register('email')}
                   placeholder="your@email.com"
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                  className="w-full px-4 py-3 mt-2 text-sm bg-white border rounded-xl border-slate-200 text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
                 />
                 {errors.email && <p className="mt-2 text-xs text-red-600">{errors.email.message}</p>}
               </div>
+              {bulkProductIntent ? (
+                <div>
+                  <label className="text-sm font-semibold text-ink">How much do you need?</label>
+                  <input
+                    {...register('requiredQuantity')}
+                    placeholder="Example: 5 kg, 25 bottles, 10 litres"
+                    className="w-full px-4 py-3 mt-2 text-sm bg-white border rounded-xl border-slate-200 text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                  />
+                  <p className="mt-2 text-xs text-muted">
+                    Mention the quantity or requirement you want us to quote for.
+                  </p>
+                  {errors.requiredQuantity && (
+                    <p className="mt-2 text-xs text-red-600">{errors.requiredQuantity.message}</p>
+                  )}
+                </div>
+              ) : null}
               <div>
                 <label className="text-sm font-semibold text-ink">Message</label>
                 <textarea
                   {...register('message')}
                   rows="5"
                   placeholder="Tell us about your requirement"
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                  className="w-full px-4 py-3 mt-2 text-sm bg-white border rounded-xl border-slate-200 text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
                 />
                 {errors.message && <p className="mt-2 text-xs text-red-600">{errors.message.message}</p>}
               </div>
@@ -273,7 +315,7 @@ function Contact() {
             </div>
           </form>
 
-          <div className="space-y-6 rounded-3xl border border-slate-200/80 bg-white p-8 shadow-lg shadow-black/10">
+          <div className="p-8 space-y-6 bg-white border shadow-lg rounded-3xl border-slate-200/80 shadow-black/10">
             <div className="flex items-start gap-3">
               <FiMail className="mt-1 text-ember" size={20} />
               <div>
@@ -318,9 +360,9 @@ function Contact() {
         </div>
       </section>
 
-      <footer className="bg-midnight px-6 py-14 text-white">
-        <div className="mx-auto w-full max-w-6xl">
-          <h2 className="font-display text-2xl">Kannauj Attars</h2>
+      <footer className="px-6 text-white bg-midnight py-14">
+        <div className="w-full max-w-6xl mx-auto">
+          <h2 className="text-2xl font-display">Kannauj Attars</h2>
           <p className="mt-2 text-sm text-white/75">
             Mohalla Holi, Kannauj - 209725 (U.P.), India • {BUSINESS.phones?.join(' • ')}
           </p>

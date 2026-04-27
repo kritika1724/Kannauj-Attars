@@ -70,6 +70,7 @@ function About() {
               <h2 className="text-xl font-semibold text-ink">Business details</h2>
             </div>
             <p className="mt-4 text-sm text-muted">Private enterprise: {BUSINESS.name}</p>
+            <p className="mt-2 text-sm font-semibold text-emberDark">Firm: {BUSINESS.firmName}</p>
             <div className="mt-4 rounded-2xl border border-slate-200/80 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Deals in</p>
               <ul className="mt-4 space-y-2 text-sm text-muted">
@@ -127,6 +128,45 @@ function About() {
         </div>
       </section>
 
+      <section className="bg-[linear-gradient(180deg,#FFFFFF_0%,#F6F7FB_100%)] px-6 py-16">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="max-w-3xl">
+            <p className="ka-kicker">Heritage & Craft</p>
+            <h2 className="mt-4 ka-h2">A perfume legacy shaped across generations</h2>
+            <p className="mt-4 text-sm leading-8 text-muted">{BUSINESS.legacyIntro}</p>
+          </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+            <div className="rounded-3xl border border-gold/20 bg-white p-8 shadow-sm">
+              <div className="rounded-3xl border border-gold/20 bg-clay/55 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted">Deg-Bhapka tradition</p>
+                <p className="mt-3 text-sm leading-7 text-muted">{BUSINESS.craftNote}</p>
+              </div>
+
+              <div className="mt-5 rounded-3xl border border-emerald-100 bg-white p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted">GI-tagged authenticity</p>
+                <p className="mt-3 text-sm leading-7 text-muted">{BUSINESS.giNote}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {BUSINESS.legacyTimeline.map((item) => (
+                <div
+                  key={`${item.year}-${item.title}`}
+                  className="rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm"
+                >
+                  <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emberDark">
+                    {item.year}
+                  </span>
+                  <h3 className="mt-4 text-lg font-semibold text-ink">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-muted">{item.copy}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="bg-gradient-to-b from-sand to-clay px-6 py-16">
         <div className="mx-auto w-full max-w-6xl">
           <div className="mb-8 max-w-2xl">
@@ -156,7 +196,7 @@ function About() {
 
       <footer className="bg-midnight px-6 py-14 text-white">
         <div className="mx-auto w-full max-w-6xl">
-          <h2 className="font-display text-2xl">Kannauj Attars</h2>
+          <h2 className="font-display text-2xl">{BUSINESS.displayName}</h2>
           <p className="mt-2 text-sm text-white/75">Heritage perfumery from the heart of Kannauj.</p>
         </div>
       </footer>

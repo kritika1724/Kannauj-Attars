@@ -36,13 +36,15 @@ function Cart() {
               <div className="grid gap-4">
                 {items.map((item) => (
                   <div
-                    key={`${item.product}-${item.packLabel || 'default'}`}
+                    key={`${item.product}-${item.packLabel || 'default'}-${item.isSample ? 'sample' : 'regular'}`}
                     className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-clay/70 p-4"
                   >
                     <div className="min-w-[220px]">
                       <p className="text-sm font-semibold text-ink">{item.name}</p>
                       {item.packLabel && (
-                        <p className="mt-1 text-xs font-semibold text-emberDark">Pack: {item.packLabel}</p>
+                        <p className="mt-1 text-xs font-semibold text-emberDark">
+                          {item.isSample ? 'Sample' : 'Pack'}: {item.packLabel}
+                        </p>
                       )}
                       <p className="mt-1 text-xs text-muted">₹{item.price}</p>
                     </div>
@@ -58,6 +60,7 @@ function Cart() {
                             updateQty({
                               product: item.product,
                               packLabel: item.packLabel || '',
+                              isSample: item.isSample === true,
                               qty: e.target.value,
                             })
                           )
@@ -66,7 +69,13 @@ function Cart() {
                       />
                       <button
                         onClick={() =>
-                          dispatch(removeFromCart({ product: item.product, packLabel: item.packLabel || '' }))
+                          dispatch(
+                            removeFromCart({
+                              product: item.product,
+                              packLabel: item.packLabel || '',
+                              isSample: item.isSample === true,
+                            })
+                          )
                         }
                         className="rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-600"
                       >

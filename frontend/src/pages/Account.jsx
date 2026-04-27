@@ -83,7 +83,7 @@ function Account() {
           <p className="mt-4 text-lg text-muted">
             {user
               ? `Hello, ${user.name}.`
-              : 'Log in to leave reviews and track your orders. New account registration is currently closed.'}
+              : 'New account registration is currently closed.'}
           </p>
         </div>
       </header>
@@ -171,20 +171,20 @@ function Account() {
           </div>
 
           <div className="rounded-3xl border border-slate-200/80 bg-white p-8 shadow-lg shadow-black/10">
-            <h2 className="text-xl font-semibold text-ink">Why login?</h2>
+            <h2 className="text-xl font-semibold text-ink">Ordering without an account</h2>
             <ul className="mt-4 space-y-3 text-sm text-muted">
-              <li>Leave verified reviews on products.</li>
-              <li>Track orders and delivery updates.</li>
-              <li>Faster inquiries for custom or bulk orders.</li>
+              <li>You can place an order without creating an account.</li>
+              <li>We will share your order details on your WhatsApp number and email.</li>
+              <li>You can track your order anytime using your Order ID.</li>
             </ul>
             <p className="mt-5 text-sm text-muted">
-              Need a new account? Please contact Kannauj Attars directly.
+              New account registration is currently closed.
             </p>
             <Link
-              to="/contact"
+              to="/track-order"
               className="mt-5 inline-flex rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-emberDark hover:border-gold/40"
             >
-              Contact us
+              Track your order
             </Link>
           </div>
         </div>

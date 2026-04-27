@@ -1,46 +1,44 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, auth } from '../services/api'
 import { useDispatch } from 'react-redux'
 import { addToCart } from '../features/cartSlice'
 import AddToCartModal from '../components/AddToCartModal'
-import { toAssetUrl } from '../utils/media'
-import { PURPOSE_TAGS, FAMILY_TAGS } from '../config/taxonomy'
+import ProductCard from '../components/ProductCard'
+import { useTaxonomy } from '../components/TaxonomyProvider'
 import { BUSINESS } from '../config/business'
+import { getPurposeCollectionMeta } from '../config/collections'
 
 const SORT_VALUES = new Set(['newest', 'price_asc', 'price_desc', 'rating_desc', 'name_asc'])
-const PURPOSE_VALUES = new Set(PURPOSE_TAGS.map((t) => t.id))
-const FAMILY_VALUES = new Set(FAMILY_TAGS.map((t) => t.id))
-
-const getMinPack = (packs = []) => {
-  const normalized = packs
-    .map((p) => ({ label: (p.label || '').trim(), price: Number(p.price) }))
-    .filter((p) => p.label && !Number.isNaN(p.price))
-  if (!normalized.length) return null
-  return normalized.reduce((min, p) => (p.price < min.price ? p : min), normalized[0])
+const COLLECTION_MAP = {
+  signature: {
+    title: 'Signature Attars',
+    lead: 'Admin-curated blends chosen for everyday elegance, balance, and easy wear.',
+  },
+  heritage: {
+    title: 'Heritage Collection',
+    lead: 'Admin-curated traditional profiles inspired by classic Kannauj perfumery.',
+  },
 }
-
-const getShortDescription = (text, maxLength = 96) => {
-  const value = String(text || '')
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim())
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  if (!value) return ''
-  if (value.length <= maxLength) return value
-  return `${value.slice(0, maxLength).trim()}...`
-}
+const COLLECTION_VALUES = new Set(Object.keys(COLLECTION_MAP))
 
 function Products() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
   const searchKey = searchParams.toString()
+  const collectionKey = (searchParams.get('collection') || '').trim().toLowerCase()
+  const activeCollection = COLLECTION_VALUES.has(collectionKey) ? collectionKey : ''
+  const collectionMeta = activeCollection ? COLLECTION_MAP[activeCollection] : null
   const user = auth.getUser()
   const isAdmin = user?.isAdmin === true
+  const {
+    purposes: purposeOptions,
+    families: familyOptions,
+    purposeMap,
+    familyMap,
+    loading: taxonomyLoading,
+  } = useTaxonomy()
   const [products, setProducts] = useState([])
   const [pages, setPages] = useState(1)
   const [page, setPage] = useState(1)
@@ -56,6 +54,13 @@ function Products() {
   const purposeParam = purposes.join(',')
   const familyParam = families.join(',')
   const activeFilterCount = purposes.length + families.length + (bestSellerOnly ? 1 : 0)
+  const purposeValues = new Set(purposeOptions.map((t) => t.id))
+  const familyValues = new Set(familyOptions.map((t) => t.id))
+  const activePurposeId = !activeCollection && purposes.length === 1 && families.length === 0 ? purposes[0] : ''
+  const activePurposeMeta = activePurposeId
+    ? getPurposeCollectionMeta(activePurposeId, purposeMap[activePurposeId] || activePurposeId)
+    : null
+  const pageMeta = collectionMeta || activePurposeMeta
 
   const togglePurpose = (id) => {
     setPage(1)
@@ -86,13 +91,13 @@ function Products() {
       ? qpPurpose
           .split(',')
           .map((s) => s.trim())
-          .filter((id) => PURPOSE_VALUES.has(id))
+          .filter((id) => purposeValues.has(id))
       : []
     const nextFamilies = qpFamily
       ? qpFamily
           .split(',')
           .map((s) => s.trim())
-          .filter((id) => FAMILY_VALUES.has(id))
+          .filter((id) => familyValues.has(id))
       : []
     const nextPage = Number(qpPageRaw || 1)
 
@@ -102,7 +107,7 @@ function Products() {
     setFamilies(nextFamilies)
     setBestSellerOnly(['1', 'true', 'yes', 'on'].includes(qpBestSeller.toLowerCase()))
     setPage(Number.isFinite(nextPage) && nextPage > 0 ? nextPage : 1)
-  }, [searchKey])
+  }, [searchKey, taxonomyLoading, purposeOptions, familyOptions])
 
   useEffect(() => {
     const load = async () => {
@@ -113,6 +118,7 @@ function Products() {
           sort,
           purpose: purposeParam,
           family: familyParam,
+          collection: activeCollection,
           bestSeller: bestSellerOnly ? 1 : '',
         })
         const list = Array.isArray(data) ? data : data.products || []
@@ -123,21 +129,42 @@ function Products() {
       }
     }
     load()
-  }, [page, keyword, sort, purposeParam, familyParam, bestSellerOnly])
+  }, [page, keyword, sort, purposeParam, familyParam, activeCollection, bestSellerOnly])
 
   return (
     <div className="bg-sand min-h-screen">
       <header className="px-4 pb-10 pt-12 sm:px-6">
         <div className="mx-auto w-full max-w-6xl">
-          <p className="ka-kicker">Products</p>
-          <h1 className="mt-3 ka-h1">Explore our attars</h1>
-          <p className="mt-4 ka-lead">Handcrafted blends for every mood.</p>
+          <p className="ka-kicker">{pageMeta ? 'Collection' : 'Products'}</p>
+          <h1 className="mt-3 ka-h1">{pageMeta ? pageMeta.title : 'Explore our attars'}</h1>
+          <p className="mt-4 ka-lead">{pageMeta ? pageMeta.lead : 'Handcrafted blends for every mood.'}</p>
+          <div className="mt-6">
+            <Link to="/collections" className="ka-btn-primary px-6 py-3">
+              Shop by purpose
+            </Link>
+          </div>
         </div>
       </header>
 
       <section className="px-4 pb-16 sm:px-6">
         <div className="mx-auto w-full max-w-6xl">
           <div className="mb-8 grid gap-4 rounded-3xl border border-slate-200/80 bg-white p-5 shadow-sm">
+            {pageMeta ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-gold/20 bg-clay/60 px-4 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Collection view</p>
+                  <p className="mt-1 text-sm font-semibold text-ink">{pageMeta.title}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/products')}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-emberDark transition hover:border-gold/50"
+                >
+                  View all products
+                </button>
+              </div>
+            ) : null}
+
             <div className="grid gap-4 md:grid-cols-[1fr_auto_auto_auto]">
               <input
                 value={keyword}
@@ -145,7 +172,7 @@ function Products() {
                   setPage(1)
                   setKeyword(e.target.value)
                 }}
-                placeholder="Search attars…"
+                placeholder={pageMeta ? `Search within ${pageMeta.title}…` : 'Search attars…'}
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/15"
               />
               <button
@@ -216,7 +243,7 @@ function Products() {
                       key={id}
                       className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-emberDark"
                     >
-                      {PURPOSE_TAGS.find((t) => t.id === id)?.label || id}
+                      {purposeMap[id] || id}
                     </span>
                   ))}
                   {families.map((id) => (
@@ -224,7 +251,7 @@ function Products() {
                       key={id}
                       className="rounded-full bg-clay/70 px-3 py-1 text-[11px] font-semibold text-emberDark"
                     >
-                      {FAMILY_TAGS.find((t) => t.id === id)?.label || id}
+                      {familyMap[id] || id}
                     </span>
                   ))}
                 </div>
@@ -250,25 +277,34 @@ function Products() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Filter options</p>
-                  <p className="mt-2 text-sm text-muted">
+                    <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Filter options</p>
+                    <p className="mt-2 text-sm text-muted">
                       Select multiple purposes and fragrance families (checkboxes).
-                  </p>
-                </div>
+                    </p>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPage(1)
-                      setPurposes([])
-                      setFamilies([])
-                      setBestSellerOnly(false)
-                    }}
-                    disabled={purposes.length === 0 && families.length === 0 && !bestSellerOnly}
-                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-emberDark transition hover:border-gold/50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Clear filters
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPage(1)
+                        setPurposes([])
+                        setFamilies([])
+                        setBestSellerOnly(false)
+                      }}
+                      disabled={purposes.length === 0 && families.length === 0 && !bestSellerOnly}
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-emberDark transition hover:border-gold/50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Clear filters
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFiltersOpen(false)}
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-emberDark transition hover:border-gold/50"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
 
                 <label className="mt-5 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white px-4 py-3">
@@ -288,7 +324,7 @@ function Products() {
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Shop by purpose</p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {PURPOSE_TAGS.map((t) => {
+                      {purposeOptions.map((t) => {
                         const checked = purposes.includes(t.id)
                         return (
                           <label
@@ -315,7 +351,7 @@ function Products() {
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Fragrance family</p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {FAMILY_TAGS.map((t) => {
+                      {familyOptions.map((t) => {
                         const checked = families.includes(t.id)
                         return (
                           <label
@@ -350,12 +386,44 @@ function Products() {
                 key={product._id}
                 product={product}
                 onView={() => navigate(`/products/${product._id}`)}
-                onAdd={!isAdmin ? () => setCartModal({ open: true, product }) : null}
+                onAdd={
+                  !isAdmin
+                    ? ({ mode } = {}) => {
+                        if (mode === 'sample') {
+                          const sample = product.sample || {}
+                          dispatch(
+                            addToCart({
+                              product: product._id,
+                              name: product.name,
+                              price: Number(sample.price),
+                              image: product.images?.[0] || '',
+                              packLabel: sample.label,
+                              isSample: true,
+                              qty: 1,
+                            })
+                          )
+                          navigate('/cart')
+                          return
+                        }
+
+                        setCartModal({ open: true, product })
+                      }
+                    : null
+                }
                 isAdmin={isAdmin}
               />
             ))}
             {products.length === 0 && (
-              <p className="text-sm text-muted">No products yet. Add some from the admin panel.</p>
+              <div className="rounded-3xl border border-slate-200/80 bg-white p-6 text-sm text-muted">
+                {collectionMeta ? (
+                  <>
+                    No products have been added to <span className="font-semibold text-ink">{collectionMeta.title}</span> yet.
+                    {isAdmin ? ' Edit a product and add it to this collection from Admin → Products.' : ''}
+                  </>
+                ) : (
+                  <>No products yet. Add some from the admin panel.</>
+                )}
+              </div>
             )}
           </div>
 
@@ -412,19 +480,29 @@ function Products() {
           open={cartModal.open}
           product={cartModal.product}
           onClose={() => setCartModal({ open: false, product: null })}
-          onConfirm={({ packLabel, qty }) => {
+          onConfirm={({ packLabel, qty, isSample }) => {
             const p = cartModal.product
             if (!p) return
             const packs = Array.isArray(p.packs) ? p.packs : []
             const chosen = packLabel ? packs.find((x) => (x.label || '').trim() === packLabel) : null
-            const price = chosen ? chosen.price : p.price
+            const sample = p.sample || {}
+            const regularPrice = Number(chosen?.price)
+            const salePrice = chosen?.salePrice === null || chosen?.salePrice === undefined || chosen?.salePrice === '' ? null : Number(chosen?.salePrice)
+            const price = isSample
+              ? Number(sample.price)
+              : chosen && Number.isFinite(salePrice) && salePrice > 0 && Number.isFinite(regularPrice) && salePrice < regularPrice
+                ? salePrice
+                : chosen
+                  ? regularPrice
+                  : p.price
 
             const item = {
               product: p._id,
               name: p.name,
               price,
               image: p.images?.[0] || '',
-              packLabel: packs.length ? packLabel : '',
+              packLabel: isSample ? sample.label : packs.length ? packLabel : '',
+              isSample: isSample === true,
               qty,
             }
 
@@ -435,123 +513,6 @@ function Products() {
         />
       ) : null}
     </div>
-  )
-}
-
-function ProductCard({ product, onView, onAdd, isAdmin }) {
-  const minPack = useMemo(() => getMinPack(Array.isArray(product?.packs) ? product.packs : []), [product?.packs])
-  const showPack = Array.isArray(product?.packs) && product.packs.length && minPack
-  const shortDescription = getShortDescription(product?.description)
-  const hasReviews = Number(product?.numReviews || 0) > 0
-  const priceLabel = showPack ? minPack.label : 'Base price'
-
-  return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_18px_50px_rgba(17,27,58,0.10)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_30px_70px_rgba(17,27,58,0.16)]">
-      <Link to={`/products/${product._id}`} className="block p-3 sm:p-4">
-        <div className="relative aspect-square overflow-hidden rounded-[24px] bg-[radial-gradient(circle_at_top,rgba(201,162,74,0.18),rgba(255,255,255,1)_55%,rgba(17,27,58,0.06))]">
-          <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
-            {product?.isBestSeller ? (
-              <span className="rounded-full bg-gold px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-midnight">
-                Best seller
-              </span>
-            ) : null}
-            {product?.isNewArrival ? (
-              <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-emberDark shadow-sm">
-                New
-              </span>
-            ) : null}
-          </div>
-
-          {product.images?.[0] ? (
-            <img
-              src={toAssetUrl(product.images[0], import.meta.env.VITE_API_ASSET)}
-              alt={product.name}
-              className="h-full w-full object-cover object-center transition duration-500 group-hover:scale-105"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(201,162,74,0.22),rgba(255,255,255,0.96),rgba(17,27,58,0.10))]">
-              <span className="rounded-full border border-gold/25 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-emberDark">
-                Kannauj Attars
-              </span>
-            </div>
-          )}
-        </div>
-      </Link>
-
-      <div className="flex flex-1 flex-col px-4 pb-4 sm:px-5 sm:pb-5">
-        <Link to={`/products/${product._id}`} className="block">
-          <h3 className="text-lg font-semibold leading-snug text-ink">{product.name}</h3>
-        </Link>
-
-        {shortDescription ? (
-          <p className="mt-2 text-sm leading-6 text-muted">{shortDescription}</p>
-        ) : null}
-
-        {(Array.isArray(product.purposeTags) && product.purposeTags.length > 0) ||
-        (Array.isArray(product.familyTags) && product.familyTags.length > 0) ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(product.purposeTags || []).slice(0, 1).map((id) => (
-              <span key={id} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-emberDark">
-                {PURPOSE_TAGS.find((t) => t.id === id)?.label || id}
-              </span>
-            ))}
-            {(product.familyTags || []).slice(0, 2).map((id) => (
-              <span key={id} className="rounded-full bg-clay/70 px-3 py-1 text-[11px] font-semibold text-emberDark">
-                {FAMILY_TAGS.find((t) => t.id === id)?.label || id}
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        <div className="mt-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted">{priceLabel}</p>
-            <p className="mt-1 text-lg font-semibold text-ink">
-              {showPack ? (
-                <>
-                  ₹{minPack.price}
-                  <span className="ml-2 text-sm font-medium text-muted">{minPack.label}</span>
-                </>
-              ) : (
-                <>₹{product.price}</>
-              )}
-            </p>
-          </div>
-          {hasReviews ? (
-            <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-emberDark">
-              {Number(product.rating || 0).toFixed(1)} / 5
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          {!isAdmin ? (
-            <button
-              type="button"
-              onClick={onAdd}
-              className="ka-btn-primary px-4 py-2.5 text-xs sm:text-sm"
-            >
-              Add to cart
-            </button>
-          ) : (
-            <Link
-              to={`/admin/products/${product._id}`}
-              className="ka-btn-primary px-4 py-2.5 text-center text-xs sm:text-sm"
-            >
-              Edit (Admin)
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={onView}
-            className="ka-btn-ghost px-4 py-2.5 text-xs sm:text-sm"
-          >
-            View
-          </button>
-        </div>
-      </div>
-    </article>
   )
 }
 

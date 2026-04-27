@@ -111,6 +111,9 @@ export const api = {
     ).toString()
     return request(`/products${qs ? `?${qs}` : ''}`)
   },
+  getTaxonomy: () => request('/taxonomy'),
+  createTaxonomyTerm: (payload) =>
+    request('/taxonomy', { method: 'POST', body: JSON.stringify(payload) }),
   getProduct: (id) => request(`/products/${id}`),
   createProduct: (payload) =>
     request('/products', { method: 'POST', body: JSON.stringify(payload) }),
@@ -140,10 +143,10 @@ export const api = {
     request('/payments/razorpay/order', { method: 'POST', body: JSON.stringify({ orderId }) }),
   verifyRazorpayPayment: (payload) =>
     request('/payments/razorpay/verify', { method: 'POST', body: JSON.stringify(payload) }),
-  uploadImage: async (file) => {
+  uploadMedia: async (file) => {
     const token = getToken()
     const formData = new FormData()
-    formData.append('image', file)
+    formData.append('file', file, file?.name || 'upload')
 
     let response
     try {
@@ -161,10 +164,18 @@ export const api = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Upload failed' }))
-      throw new Error(error.message || 'Upload failed')
+      const message = error.message || 'Upload failed'
+      throw new Error(
+        /unexpected file/i.test(message)
+          ? 'Backend is still using the old upload handler. Restart backend once, then try the MP4 again.'
+          : message
+      )
     }
 
     return response.json()
+  },
+  uploadImage: async (file) => {
+    return api.uploadMedia(file)
   },
 
   // Site media (admin)

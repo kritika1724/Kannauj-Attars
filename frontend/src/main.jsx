@@ -8,16 +8,19 @@ import { SiteAssetsProvider } from './components/SiteAssetsProvider'
 import AuthBootstrap from './components/AuthBootstrap'
 import CartBootstrap from './components/CartBootstrap'
 import RecentlyViewedBootstrap from './components/RecentlyViewedBootstrap'
+import { TaxonomyProvider } from './components/TaxonomyProvider'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Provider store={store}>
-      <SiteAssetsProvider>
-        <AuthBootstrap />
-        <CartBootstrap />
-        <RecentlyViewedBootstrap />
-        <App />
-      </SiteAssetsProvider>
+      <TaxonomyProvider>
+        <SiteAssetsProvider>
+          <AuthBootstrap />
+          <CartBootstrap />
+          <RecentlyViewedBootstrap />
+          <App />
+        </SiteAssetsProvider>
+      </TaxonomyProvider>
     </Provider>
   </StrictMode>,
 )

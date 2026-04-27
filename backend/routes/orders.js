@@ -58,6 +58,76 @@ const contactMatchesOrder = (order, contactValue) => {
   return allowedContacts.includes(contactValue)
 }
 
+const getEffectivePackPrice = (pack) => {
+  const regularPrice = Number(pack?.price)
+  const salePrice = Number(pack?.salePrice)
+  if (Number.isFinite(salePrice) && salePrice > 0 && Number.isFinite(regularPrice) && salePrice < regularPrice) {
+    return salePrice
+  }
+  return regularPrice
+}
+
+const getOrderStockAdjustments = (orderItems = []) => {
+  const totals = new Map()
+  orderItems.forEach((item) => {
+    const productId = String(item?.product || '')
+    if (!productId) return
+    const qty = Math.max(1, Number(item?.qty || 1))
+    totals.set(productId, (totals.get(productId) || 0) + qty)
+  })
+  return totals
+}
+
+const restoreOrderStock = async (order, session = null) => {
+  const adjustments = getOrderStockAdjustments(order?.orderItems || [])
+  if (!adjustments.size) return
+
+  const ops = [...adjustments.entries()].map(([productId, qty]) => ({
+    updateOne: {
+      filter: { _id: productId },
+      update: { $inc: { stock: qty } },
+    },
+  }))
+
+  const options = {}
+  if (session) options.session = session
+  await Product.bulkWrite(ops, options)
+}
+
+const reserveOrderStock = async (order, session = null) => {
+  const adjustments = getOrderStockAdjustments(order?.orderItems || [])
+  if (!adjustments.size) return
+
+  const query = Product.find({ _id: { $in: [...adjustments.keys()] } }).select('name stock')
+  if (session) query.session(session)
+  const inventoryProducts = await query
+  const inventoryMap = new Map(inventoryProducts.map((product) => [String(product._id), product]))
+
+  for (const [productId, qtyNeeded] of adjustments.entries()) {
+    const product = inventoryMap.get(productId)
+    if (!product) {
+      throw new Error('Invalid product in order')
+    }
+
+    const availableStock = Math.max(0, Number(product.stock || 0))
+    if (availableStock < qtyNeeded) {
+      throw new Error(`${product.name} has only ${availableStock} item(s) left in stock`)
+    }
+  }
+
+  inventoryProducts.forEach((product) => {
+    const qtyNeeded = adjustments.get(String(product._id)) || 0
+    if (!qtyNeeded) return
+    product.stock = Math.max(0, Number(product.stock || 0) - qtyNeeded)
+  })
+
+  await Promise.all(
+    inventoryProducts.map((product) =>
+      product.save({ session, validateBeforeSave: false })
+    )
+  )
+}
+
 // Create order
 router.post(
   '/',
@@ -84,7 +154,7 @@ router.post(
 
     const productIds = [...new Set(orderItems.map((item) => String(item.product || '')).filter(Boolean))]
     const products = await Product.find({ _id: { $in: productIds } })
-      .select('name price packs images')
+      .select('name price packs images sample stock')
       .lean()
 
     const productMap = new Map(products.map((product) => [String(product._id), product]))
@@ -98,10 +168,30 @@ router.post(
         }
 
         const requestedPackLabel = String(item.packLabel || '').trim()
+        const isSample = item?.isSample === true
         const pack =
           requestedPackLabel && Array.isArray(product.packs)
             ? product.packs.find((p) => (p.label || '').trim() === requestedPackLabel)
             : null
+        const sample = product?.sample || {}
+
+        if (isSample) {
+          const sampleLabel = String(sample.label || '').trim()
+          const samplePrice = Number(sample.price)
+          if (sample.enabled !== true || !sampleLabel || Number.isNaN(samplePrice)) {
+            throw new Error(`Sample is not available for product: ${product.name}`)
+          }
+
+          return {
+            product: product._id,
+            name: product.name,
+            qty: Math.max(1, Number(item.qty || 1)),
+            price: samplePrice,
+            image: product.images?.[0] || '',
+            sample: true,
+            pack: { label: sampleLabel },
+          }
+        }
 
         if (Array.isArray(product.packs) && product.packs.length > 0) {
           if (!requestedPackLabel) {
@@ -123,8 +213,9 @@ router.post(
           product: product._id,
           name: product.name,
           qty,
-          price: pack ? pack.price : product.price,
+          price: pack ? getEffectivePackPrice(pack) : product.price,
           image: product.images?.[0] || '',
+          sample: false,
           pack: { label: pack ? pack.label : requestedPackLabel || '' },
         }
       })
@@ -145,24 +236,42 @@ router.post(
       })
     }
 
-    const order = await Order.create({
-      user: req.user?._id || null,
-      orderItems: normalizedItems,
-      shippingAddress: {
-        ...shippingAddress,
-        email: String(shippingAddress.email || '').trim().toLowerCase(),
-        phone: String(shippingAddress.phone || '').trim(),
-        whatsapp: String(shippingAddress.whatsapp || '').trim(),
-      },
-      paymentMethod: method || 'COD',
-      itemsPrice,
-      shippingPrice,
-      taxPrice,
-      totalPrice,
-      status: 'pending',
-    })
+    const session = await mongoose.startSession()
 
-    res.status(201).json(order)
+    let savedOrder
+    try {
+      await session.withTransaction(async () => {
+        await reserveOrderStock({ orderItems: normalizedItems }, session)
+
+        savedOrder = await Order.create(
+          [
+            {
+              user: req.user?._id || null,
+              orderItems: normalizedItems,
+              shippingAddress: {
+                ...shippingAddress,
+                email: String(shippingAddress.email || '').trim().toLowerCase(),
+                phone: String(shippingAddress.phone || '').trim(),
+                whatsapp: String(shippingAddress.whatsapp || '').trim(),
+              },
+              paymentMethod: method || 'COD',
+              itemsPrice,
+              shippingPrice,
+              taxPrice,
+              totalPrice,
+              status: 'pending',
+            },
+          ],
+          { session }
+        )
+      })
+    } catch (error) {
+      return res.status(400).json({ message: error.message || 'Unable to place order' })
+    } finally {
+      await session.endSession()
+    }
+
+    res.status(201).json(savedOrder?.[0] || savedOrder)
   })
 )
 
@@ -228,6 +337,7 @@ router.put(
       return res.status(400).json({ message: 'Order can only be cancelled before confirmation' })
     }
 
+    await restoreOrderStock(order)
     order.status = 'cancelled'
     order.cancelledAt = new Date()
     order.isDelivered = false
@@ -336,6 +446,13 @@ router.put(
       return res.status(404).json({ message: 'Order not found' })
     }
 
+    const previousStatus = order.status
+    if (previousStatus !== 'cancelled' && status === 'cancelled') {
+      await restoreOrderStock(order)
+    } else if (previousStatus === 'cancelled' && status !== 'cancelled') {
+      await reserveOrderStock(order)
+    }
+
     order.status = status
     if (status === 'delivered') {
       order.isDelivered = true
@@ -368,6 +485,9 @@ router.delete(
       return res.status(404).json({ message: 'Order not found' })
     }
 
+    if (order.status !== 'cancelled') {
+      await restoreOrderStock(order)
+    }
     await order.deleteOne()
     res.json({ message: 'Order deleted' })
   })
@@ -395,6 +515,7 @@ router.put(
       return res.status(400).json({ message: 'Order can only be cancelled before confirmation' })
     }
 
+    await restoreOrderStock(order)
     order.status = 'cancelled'
     order.cancelledAt = new Date()
     order.isDelivered = false

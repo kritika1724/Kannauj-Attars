@@ -5,6 +5,7 @@ import { auth } from './services/api'
 import { FiMenu, FiX } from 'react-icons/fi'
 
 import Home from './pages/Home'
+import Collections from './pages/Collections'
 import Contact from './pages/Contact'
 import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
@@ -15,6 +16,7 @@ import NotFound from './pages/NotFound'
 import CustomBlends from './pages/CustomBlends'
 import Signature from './pages/collections/Signature'
 import Heritage from './pages/collections/Heritage'
+import PurposeCollection from './pages/collections/PurposeCollection'
 import Gallery from './pages/Gallery'
 import CreateBlend from './pages/CreateBlend'
 import DiscoveryQuiz from './pages/DiscoveryQuiz'
@@ -37,15 +39,18 @@ import AdminProducts from './pages/AdminProducts'
 import AdminProductForm from './pages/AdminProductForm'
 import AdminMedia from './pages/AdminMedia'
 import AdminContacts from './pages/AdminContacts'
+import AdminFilters from './pages/AdminFilters'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import LogoMark from './components/LogoMark'
+import CursorGlow from './components/CursorGlow'
+import { BUSINESS } from './config/business'
 
 const navLinkClass = ({ isActive }) =>
   `relative text-sm font-semibold tracking-wide transition ${
     isActive
       ? 'text-ink after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full after:bg-[linear-gradient(90deg,rgba(201,162,74,1),rgba(201,162,74,0.25))] after:content-[""]'
-      : 'text-muted hover:text-ink hover:-translate-y-0.5'
+      : 'text-emberDark hover:text-ink hover:-translate-y-0.5'
   }`
 
 const mobileNavLinkClass = ({ isActive }) =>
@@ -111,8 +116,25 @@ function AppShell() {
     }
   }, [inAdminArea])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (location.hash) {
+        const target = document.getElementById(decodeURIComponent(location.hash.slice(1)))
+        if (target) {
+          target.scrollIntoView({ block: 'start' })
+          return
+        }
+      }
+
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [location.pathname, location.search, location.hash])
+
   return (
-    <div className="min-h-screen">
+    <div className="relative min-h-screen overflow-x-clip">
+      <CursorGlow />
       {inAdminArea ? (
         <header className="sticky top-0 z-20 border-b border-gold/20 bg-[linear-gradient(135deg,#070B18,#111B3A)] shadow-[0_18px_40px_rgba(7,11,24,0.35)]">
           <div className="ka-container flex flex-wrap items-center justify-between gap-4 py-4">
@@ -120,7 +142,7 @@ function AppShell() {
               <LogoMark />
               <div className="flex min-w-0 flex-col">
                 <span className="truncate font-display text-xl tracking-wide text-white sm:text-2xl">
-                  Kannauj Attars <span className="text-gold">Admin</span>
+                  {BUSINESS.displayName} <span className="text-gold">Admin</span>
                 </span>
                 <span className="truncate text-xs uppercase tracking-[0.3em] text-white/65">
                   Dashboard access
@@ -141,6 +163,9 @@ function AppShell() {
               <NavLink to="/admin/media" className={adminNavLinkClass}>
                 Website Images
               </NavLink>
+              <NavLink to="/admin/filters" className={adminNavLinkClass}>
+                Filters
+              </NavLink>
               <NavLink to="/admin/contacts" className={adminNavLinkClass}>
                 Contacts
               </NavLink>
@@ -154,8 +179,8 @@ function AppShell() {
           </div>
         </header>
       ) : (
-        <header className="sticky top-0 z-20 relative border-b border-gold/20 bg-white/90 shadow-[0_18px_40px_rgba(17,27,58,0.12)] backdrop-blur-xl after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-[linear-gradient(90deg,rgba(201,162,74,0),rgba(201,162,74,0.75),rgba(201,162,74,0))] after:content-['']">
-          <div className="ka-container flex items-center justify-between gap-4 py-4">
+        <header className="sticky top-0 z-20 relative bg-[linear-gradient(180deg,rgba(200,169,106,0.20),rgba(255,250,244,0.42))] shadow-[0_16px_34px_rgba(17,27,58,0.14),0_10px_26px_rgba(200,169,106,0.10)] backdrop-blur-xl">
+          <div className="ka-container flex items-center justify-between gap-4 py-5">
             <Link
               to="/"
               onClick={() => {
@@ -168,12 +193,12 @@ function AppShell() {
               }}
               className="group flex flex-1 min-w-0 items-center gap-3 md:flex-none"
               aria-label="Go to home"
-              title="Kannauj Attars"
+              title={BUSINESS.displayName}
             >
               <LogoMark />
               <div className="flex min-w-0 flex-col">
                 <span className="truncate font-display text-xl tracking-wide text-ink sm:text-2xl">
-                  Kannauj Attars <span className="text-gold">•</span>
+                  {BUSINESS.displayName}
                 </span>
                 <span className="truncate text-xs uppercase tracking-[0.3em] text-muted">Since 1998</span>
               </div>
@@ -221,7 +246,7 @@ function AppShell() {
 
             <button
               type="button"
-              className="md:hidden inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-3 text-emberDark shadow-sm transition hover:border-gold/40 hover:bg-clay/50"
+              className="md:hidden inline-flex items-center justify-center rounded-2xl border border-gold/35 bg-[rgba(255,250,244,0.56)] px-3 py-3 text-emberDark shadow-sm transition hover:border-gold/60 hover:bg-[rgba(200,169,106,0.20)]"
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileOpen}
               aria-controls="mobile-nav"
@@ -241,7 +266,7 @@ function AppShell() {
               />
               <div
                 id="mobile-nav"
-                className="md:hidden absolute inset-x-0 top-full z-20 border-b border-gold/15 bg-white/95 shadow-soft backdrop-blur-xl"
+                className="md:hidden absolute inset-x-0 top-full z-20 border-b border-gold/30 bg-[linear-gradient(180deg,rgba(200,169,106,0.22),rgba(255,250,244,0.94))] shadow-soft backdrop-blur-xl"
               >
                 <div className="ka-container py-4">
                   <div className="grid gap-2">
@@ -294,12 +319,14 @@ function AppShell() {
 
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/collections" element={<Collections />} />
         <Route path="/about" element={<Navigate to="/" replace />} />
         <Route path="/explore" element={<Navigate to="/" replace />} />
         <Route path="/products" element={<Products />} />
         <Route path="/products/:id" element={<ProductDetail />} />
         <Route path="/track-order" element={<TrackOrder />} />
         <Route path="/gallery" element={<Gallery />} />
+        <Route path="/collections/purpose/:purposeId" element={<PurposeCollection />} />
         <Route path="/collections/signature" element={<Signature />} />
         <Route path="/collections/heritage" element={<Heritage />} />
         <Route path="/custom-blends" element={<CustomBlends />} />
@@ -446,6 +473,14 @@ function AppShell() {
           element={
             <ProtectedRoute adminOnly>
               <AdminContacts />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/filters"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminFilters />
             </ProtectedRoute>
           }
         />

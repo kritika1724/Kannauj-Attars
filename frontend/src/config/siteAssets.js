@@ -4,6 +4,7 @@ import { PURPOSE_TAGS, FAMILY_TAGS } from './taxonomy'
 
 export const SITE_ASSET_KEYS = [
   { key: 'site.logo', label: 'Site: Logo (Navbar / Branding)' },
+  { key: 'home.top.video', label: 'Home: Top Horizontal Video', type: 'video' },
   { key: 'home.hero.card', label: 'Home: Hero Card Image' },
   { key: 'home.hero.strip', label: 'Home: Hero Strip Image' },
   { key: 'home.culture.glimpse', label: 'Home: Culture Section Image' },

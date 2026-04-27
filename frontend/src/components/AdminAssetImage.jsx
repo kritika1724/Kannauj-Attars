@@ -39,6 +39,7 @@ function AdminAssetImage({
 
   const url = assets?.[assetKey] || ''
   const src = useMemo(() => (url ? toAssetUrl(url, import.meta.env.VITE_API_ASSET) : ''), [url])
+  const imageZoom = Math.min(Math.max(Number(assets?.[`${assetKey}.zoom`]) || 1, 1), 2.5)
 
   const upload = async (file) => {
     setBusy(true)
@@ -64,6 +65,7 @@ function AdminAssetImage({
             src={src}
             alt=""
             className={`h-full w-full bg-white ${fit === 'cover' ? 'object-cover' : 'object-contain'} ${imgClassName}`}
+            style={{ transform: `scale(${imageZoom})` }}
             loading="lazy"
             onLoad={(e) => {
               const el = e.currentTarget

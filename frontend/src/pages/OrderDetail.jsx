@@ -127,6 +127,7 @@ function OrderDetail() {
                         <p className="text-sm font-semibold text-ink">{item.name}</p>
                         <p className="mt-1 text-xs text-muted">
                           Qty: {item.qty} • ₹{item.price}
+                          {item.pack?.label ? ` • ${item.sample ? 'Sample' : 'Pack'}: ${item.pack.label}` : ''}
                         </p>
                       </div>
                     </div>

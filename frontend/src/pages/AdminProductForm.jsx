@@ -5,17 +5,31 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { api } from '../services/api'
 import { toAssetUrl } from '../utils/media'
-import { BUYER_TYPES, PURPOSE_TAGS, FAMILY_TAGS } from '../config/taxonomy'
+import { useTaxonomy } from '../components/TaxonomyProvider'
 
 const schema = yup.object({
   name: yup.string().required('Name is required.'),
   description: yup.string().required('Description is required.'),
   category: yup.string().required('Category is required.'),
   buyerType: yup.string().oneOf(['personal', 'industrial', 'both']).default('personal'),
+  stock: yup
+    .number()
+    .transform((value, originalValue) => (originalValue === '' || originalValue === null ? 0 : value))
+    .typeError('Stock must be a number.')
+    .min(0, 'Stock cannot be negative.')
+    .integer('Stock must be a whole number.')
+    .default(0),
   isBestSeller: yup.boolean().default(false),
   isNewArrival: yup.boolean().default(false),
+  sampleEnabled: yup.boolean().default(false),
   highlights: yup.string(),
 })
+
+const clampImageZoom = (value) => {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return 1
+  return Math.min(Math.max(n, 1), 2.5)
+}
 
 function AdminProductForm() {
   const { id } = useParams()
@@ -23,10 +37,13 @@ function AdminProductForm() {
   const isEditing = id && id !== 'new'
   const [images, setImages] = useState([])
   const [imageUrl, setImageUrl] = useState('')
-  const [packs, setPacks] = useState([{ label: '200 gm', price: '', stock: '' }])
+  const [imageZoom, setImageZoom] = useState(1)
+  const [uploadingImages, setUploadingImages] = useState(false)
+  const [packs, setPacks] = useState([{ label: '200 gm', price: '', salePrice: '', stock: '' }])
   const [purposeTags, setPurposeTags] = useState([])
   const [familyTags, setFamilyTags] = useState([])
   const [message, setMessage] = useState('')
+  const { buyerTypes, purposes: purposeOptions, families: familyOptions } = useTaxonomy()
 
   const hasPacks = useMemo(() => packs.some((p) => (p.label || '').trim() && p.price !== ''), [packs])
 
@@ -35,8 +52,10 @@ function AdminProductForm() {
     handleSubmit,
     getValues,
     setValue,
+    watch,
     formState: { errors },
   } = useForm({ resolver: yupResolver(schema) })
+  const sampleEnabled = watch('sampleEnabled')
 
   const appendDescriptionTemplate = (snippet) => {
     const current = String(getValues('description') || '')
@@ -49,8 +68,10 @@ function AdminProductForm() {
     // Defaults for new products
     if (!isEditing) {
       setValue('buyerType', 'personal')
+      setValue('stock', 0)
       setValue('isBestSeller', false)
       setValue('isNewArrival', false)
+      setValue('sampleEnabled', false)
     }
     if (!isEditing) return
     const load = async () => {
@@ -59,10 +80,15 @@ function AdminProductForm() {
       setValue('description', product.description)
       setValue('category', product.category)
       setValue('buyerType', product.buyerType || 'personal')
+      setValue('stock', product.stock ?? 0)
       setValue('isBestSeller', product.isBestSeller === true)
       setValue('isNewArrival', product.isNewArrival === true)
+      setValue('sampleEnabled', product.sample?.enabled === true)
+      setValue('sampleLabel', product.sample?.label || '')
+      setValue('samplePrice', product.sample?.price ?? '')
       setValue('highlights', product.highlights?.join(', ') || '')
       setImages(product.images || [])
+      setImageZoom(clampImageZoom(product.imageZoom))
       setPurposeTags(Array.isArray(product.purposeTags) ? product.purposeTags : [])
       setFamilyTags(Array.isArray(product.familyTags) ? product.familyTags : [])
       if (Array.isArray(product.packs) && product.packs.length) {
@@ -70,26 +96,44 @@ function AdminProductForm() {
           product.packs.map((p) => ({
             label: p.label || '',
             price: p.price ?? '',
+            salePrice: p.salePrice ?? '',
             stock: p.stock ?? '',
           }))
         )
       } else if (product.price !== undefined && product.price !== null) {
-        setPacks([{ label: 'Default pack', price: product.price, stock: product.stock ?? '' }])
+        setPacks([{ label: 'Default pack', price: product.price, salePrice: '', stock: product.stock ?? '' }])
       }
     }
     load()
   }, [id, isEditing, setValue])
 
   const handleImageUpload = async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const files = Array.from(event.target.files || [])
+    if (!files.length) return
     try {
-      const response = await api.uploadImage(file)
+      setUploadingImages(true)
+      setMessage(`Uploading ${files.length} photo${files.length > 1 ? 's' : ''}...`)
+      const uploaded = await Promise.all(files.map((file) => api.uploadImage(file)))
       // Store relative paths when possible so deploy works without rewriting DB URLs.
-      setImages((prev) => [...prev, response.url || response.absoluteUrl])
+      setImages((prev) => {
+        const next = [...prev]
+        uploaded.forEach((response) => {
+          const url = response.url || response.absoluteUrl
+          if (url && !next.includes(url)) next.push(url)
+        })
+        return next
+      })
+      setMessage(`${files.length} photo${files.length > 1 ? 's' : ''} uploaded. Save product to keep changes.`)
+      event.target.value = ''
     } catch (error) {
       setMessage(error.message)
+    } finally {
+      setUploadingImages(false)
     }
+  }
+
+  const makeMainImage = (url) => {
+    setImages((prev) => [url, ...prev.filter((item) => item !== url)])
   }
 
   const addImageUrl = () => {
@@ -104,6 +148,7 @@ function AdminProductForm() {
       .map((p) => ({
         label: (p.label || '').trim(),
         price: Number(p.price),
+        salePrice: p.salePrice === '' || p.salePrice === undefined ? null : Number(p.salePrice),
         stock: p.stock === '' || p.stock === undefined ? 0 : Number(p.stock),
       }))
       .filter((p) => p.label && !Number.isNaN(p.price))
@@ -113,16 +158,41 @@ function AdminProductForm() {
       return
     }
 
+    const invalidSalePack = normalizedPacks.find(
+      (pack) =>
+        pack.salePrice !== null &&
+        (!Number.isFinite(pack.salePrice) || pack.salePrice <= 0 || pack.salePrice >= pack.price)
+    )
+
+    if (invalidSalePack) {
+      setMessage('Sale price must be lower than the regular pack price.')
+      return
+    }
+
+    if (data.sampleEnabled) {
+      const sampleLabel = String(data.sampleLabel || '').trim()
+      const samplePrice = Number(data.samplePrice)
+      if (!sampleLabel || Number.isNaN(samplePrice)) {
+        setMessage('Add sample quantity and sample price.')
+        return
+      }
+    }
+
     const basePrice = normalizedPacks.reduce((min, pack) => (pack.price < min ? pack.price : min), normalizedPacks[0].price)
 
     const payload = {
       ...data,
+      stock: Math.max(0, Number(data.stock || 0)),
       price: Number(basePrice),
       highlights: data.highlights ? data.highlights.split(',').map((item) => item.trim()) : [],
       images,
+      imageZoom: clampImageZoom(imageZoom),
       packs: normalizedPacks,
       purposeTags,
       familyTags,
+      sample: data.sampleEnabled
+        ? { enabled: true, label: String(data.sampleLabel || '').trim(), price: Number(data.samplePrice) }
+        : { enabled: false, label: '', price: 0 },
     }
 
     try {
@@ -219,6 +289,26 @@ function AdminProductForm() {
             </div>
 
             <div className="rounded-3xl border border-slate-200/80 bg-clay/50 p-6">
+              <p className="text-xs uppercase tracking-[0.35em] text-muted">Inventory</p>
+              <h3 className="mt-2 text-lg font-semibold text-ink">Available stock</h3>
+              <p className="mt-2 text-sm text-muted">
+                Enter the total number of units available for this product. Stock will reduce automatically when an order is placed.
+              </p>
+
+              <div className="mt-5 max-w-sm">
+                <label className="text-sm font-semibold text-ink">Stock count</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  {...register('stock')}
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                />
+                {errors.stock ? <p className="mt-2 text-xs text-red-600">{errors.stock.message}</p> : null}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200/80 bg-clay/50 p-6">
               <p className="text-xs uppercase tracking-[0.35em] text-muted">Merchandising</p>
               <h3 className="mt-2 text-lg font-semibold text-ink">Explore placement</h3>
               <p className="mt-2 text-sm text-muted">
@@ -252,6 +342,45 @@ function AdminProductForm() {
                   className="mt-1 h-5 w-5 accent-ember"
                 />
               </label>
+
+              <div className="mt-4 rounded-3xl border border-slate-200/80 bg-white px-5 py-4">
+                <label className="flex cursor-pointer items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-ink">Show “Buy a sample” option</p>
+                    <p className="mt-1 text-xs text-muted">
+                      Turn this on to show a separate sample-buying action on the product.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    {...register('sampleEnabled')}
+                    className="mt-1 h-5 w-5 accent-ember"
+                  />
+                </label>
+
+                {sampleEnabled ? (
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="text-xs font-semibold text-muted">Sample quantity / size</label>
+                      <input
+                        {...register('sampleLabel')}
+                        placeholder="2 ml"
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted">Sample price (₹)</label>
+                      <input
+                        {...register('samplePrice')}
+                        type="number"
+                        placeholder="99"
+                        className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
             </div>
 
             <div className="rounded-3xl border border-slate-200/80 bg-clay/50 p-6">
@@ -260,12 +389,24 @@ function AdminProductForm() {
               <p className="mt-2 text-sm text-muted">
                 These tags help customers browse faster (B2C) and also help bulk buyers find relevant materials (B2B).
               </p>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/filters')}
+                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-emberDark transition hover:border-gold/50"
+                >
+                  Manage filters
+                </button>
+                <p className="text-xs text-muted">
+                  Add a new purpose or fragrance family whenever you need a custom filter.
+                </p>
+              </div>
 
               <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
                 <div className="rounded-3xl border border-slate-200/80 bg-white p-5">
                   <label className="text-sm font-semibold text-ink">Buyer type (B2C / B2B)</label>
                   <div className="mt-3 grid gap-2">
-                    {BUYER_TYPES.map((opt) => (
+                    {buyerTypes.map((opt) => (
                       <label
                         key={opt.id}
                         className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-sm text-ink hover:border-gold/40"
@@ -288,7 +429,7 @@ function AdminProductForm() {
                 <div className="rounded-3xl border border-slate-200/80 bg-white p-5">
                   <label className="text-sm font-semibold text-ink">Shop by purpose</label>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {PURPOSE_TAGS.map((tag) => {
+                    {purposeOptions.map((tag) => {
                       const active = purposeTags.includes(tag.id)
                       return (
                         <button
@@ -314,7 +455,7 @@ function AdminProductForm() {
                   <div className="mt-6">
                     <label className="text-sm font-semibold text-ink">Fragrance family</label>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {FAMILY_TAGS.map((tag) => {
+                      {familyOptions.map((tag) => {
                         const active = familyTags.includes(tag.id)
                         return (
                           <button
@@ -356,7 +497,7 @@ function AdminProductForm() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setPacks((prev) => [...prev, { label: '', price: '', stock: '' }])}
+                  onClick={() => setPacks((prev) => [...prev, { label: '', price: '', salePrice: '', stock: '' }])}
                   className="rounded-full bg-ember px-5 py-2 text-sm font-semibold text-white transition hover:bg-emberDark"
                 >
                   + Add pack
@@ -367,7 +508,7 @@ function AdminProductForm() {
                 {packs.map((p, idx) => (
                   <div
                     key={`${idx}-${p.label}`}
-                    className="grid gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 md:grid-cols-[1.1fr_0.9fr_0.8fr_auto]"
+                    className="grid gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 md:grid-cols-[1.2fr_1fr_1fr_auto]"
                   >
                     <div>
                       <label className="text-xs font-semibold text-muted">Pack label</label>
@@ -397,16 +538,16 @@ function AdminProductForm() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-muted">Pack stock</label>
+                      <label className="text-xs font-semibold text-muted">Sale price (₹)</label>
                       <input
-                        value={p.stock}
+                        value={p.salePrice}
                         onChange={(e) =>
                           setPacks((prev) =>
-                            prev.map((x, i) => (i === idx ? { ...x, stock: e.target.value } : x))
+                            prev.map((x, i) => (i === idx ? { ...x, salePrice: e.target.value } : x))
                           )
                         }
                         type="number"
-                        placeholder="0"
+                        placeholder="Optional"
                         className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-ink"
                       />
                     </div>
@@ -424,15 +565,24 @@ function AdminProductForm() {
               </div>
 
               {!hasPacks ? <p className="mt-4 text-xs text-muted">Add at least one pack size with price.</p> : null}
+              <p className="mt-3 text-xs text-muted">
+                Add a sale price to any pack if you want the product to show a Sale badge and discounted price.
+              </p>
             </div>
 
             <div>
-              <label className="text-sm font-semibold text-ink">Upload images</label>
+              <label className="text-sm font-semibold text-ink">Upload product photos</label>
+              <p className="mt-1 text-xs text-muted">
+                You can select multiple photos together. The first photo is used as the main product image.
+              </p>
               <input
                 type="file"
+                multiple
+                accept="image/*"
                 onChange={handleImageUpload}
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink file:mr-4 file:rounded-full file:border-0 file:bg-ember file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-emberDark focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/20"
               />
+              {uploadingImages ? <p className="mt-2 text-xs font-semibold text-emberDark">Uploading photos...</p> : null}
               <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
                 <input
                   value={imageUrl}
@@ -448,15 +598,65 @@ function AdminProductForm() {
                   Add
                 </button>
               </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {images.map((url) => (
+
+              <div className="mt-5 rounded-3xl border border-gold/25 bg-clay/50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-muted">
+                      Product image zoom / crop
+                    </p>
+                    <p className="mt-1 text-xs text-muted">
+                      Adjust how the main product image fills cards and product detail frames.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-emberDark">
+                    {Math.round(clampImageZoom(imageZoom) * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="2.5"
+                  step="0.05"
+                  value={imageZoom}
+                  onChange={(e) => setImageZoom(clampImageZoom(e.target.value))}
+                  className="mt-4 w-full accent-[#C9A24A]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setImageZoom(1)}
+                  className="mt-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-emberDark transition hover:border-gold/40"
+                >
+                  Reset zoom
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {images.map((url, index) => (
                   <div key={url} className="rounded-2xl border border-slate-200/80 bg-clay/70 p-3">
-                    <img
-                      src={toAssetUrl(url, import.meta.env.VITE_API_ASSET)}
-                      alt="upload"
-                      className="h-40 w-full rounded-xl bg-white object-contain p-2"
-                      loading="lazy"
-                    />
+                    <div className="h-40 w-full overflow-hidden rounded-xl bg-white">
+                      <img
+                        src={toAssetUrl(url, import.meta.env.VITE_API_ASSET)}
+                        alt="upload"
+                        className="h-full w-full object-cover transition-transform duration-300"
+                        style={{ transform: `scale(${clampImageZoom(imageZoom)})` }}
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-emberDark">
+                        {index === 0 ? 'Main photo' : `Photo ${index + 1}`}
+                      </span>
+                      {index !== 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => makeMainImage(url)}
+                          className="rounded-full border border-gold/30 bg-white px-3 py-1 text-[11px] font-semibold text-emberDark hover:border-gold/60"
+                        >
+                          Make main
+                        </button>
+                      ) : null}
+                    </div>
                     <div className="mt-2 flex items-start justify-between gap-3">
                       <p className="text-xs text-muted break-all">{url}</p>
                       <button
