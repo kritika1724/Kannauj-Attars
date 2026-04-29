@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, auth } from '../services/api'
 import { useDispatch } from 'react-redux'
@@ -50,6 +50,7 @@ function Products() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [error, setError] = useState('')
   const [cartModal, setCartModal] = useState({ open: false, product: null })
+  const filtersRef = useRef(null)
 
   const purposeParam = purposes.join(',')
   const familyParam = families.join(',')
@@ -131,6 +132,19 @@ function Products() {
     load()
   }, [page, keyword, sort, purposeParam, familyParam, activeCollection, bestSellerOnly])
 
+  useEffect(() => {
+    if (!filtersOpen) return
+
+    const handleClickOutside = (event) => {
+      if (filtersRef.current && !filtersRef.current.contains(event.target)) {
+        setFiltersOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [filtersOpen])
+
   return (
     <div className="bg-sand min-h-screen">
       <header className="px-4 pb-10 pt-12 sm:px-6">
@@ -138,10 +152,31 @@ function Products() {
           <p className="ka-kicker">{pageMeta ? 'Collection' : 'Products'}</p>
           <h1 className="mt-3 ka-h1">{pageMeta ? pageMeta.title : 'Explore our attars'}</h1>
           <p className="mt-4 ka-lead">{pageMeta ? pageMeta.lead : 'Handcrafted blends for every mood.'}</p>
-          <div className="mt-6">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link to="/collections" className="ka-btn-primary px-6 py-3">
               Shop by purpose
             </Link>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              { id: 'daily_wear', label: 'For Daily Wear' },
+              { id: 'weddings', label: 'For Weddings' },
+              { id: 'meditation_spiritual', label: 'For Meditation & Spiritual' },
+              { id: 'luxury_gifting', label: 'For Luxury Gifting' },
+              { id: 'skin_hair', label: 'For Skin' },
+              { id: 'candle_making', label: 'For Candle Making' },
+              { id: 'soap_cosmetic_mfg', label: 'For Soap / Cosmetic Manufacturing' },
+              { id: 'industrial_use', label: 'For Industrial Use' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => navigate(`/products?purpose=${encodeURIComponent(item.id)}`)}
+                className="rounded-full border border-gold/35 bg-gold/10 px-4 py-2 text-xs font-semibold text-emberDark transition hover:border-gold/70 hover:bg-gold/20"
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
         </div>
       </header>
@@ -165,7 +200,7 @@ function Products() {
               </div>
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-[1fr_auto_auto_auto]">
+            <div className="grid gap-4 md:grid-cols-[1fr_auto_auto]">
               <input
                 value={keyword}
                 onChange={(e) => {
@@ -175,21 +210,6 @@ function Products() {
                 placeholder={pageMeta ? `Search within ${pageMeta.title}…` : 'Search attars…'}
                 className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-ember focus:outline-none focus:ring-2 focus:ring-ember/15"
               />
-              <button
-                type="button"
-                aria-expanded={filtersOpen}
-                aria-controls="product-filters"
-                onClick={() => setFiltersOpen((v) => !v)}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-gold/50"
-              >
-                Filters
-                {activeFilterCount > 0 ? (
-                  <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-ember px-2 py-0.5 text-[10px] font-semibold text-white">
-                    {activeFilterCount}
-                  </span>
-                ) : null}
-                <span className="text-xs font-semibold text-muted">{filtersOpen ? 'Hide' : 'Show'}</span>
-              </button>
               <select
                 value={sort}
                 onChange={(e) => {
@@ -204,26 +224,124 @@ function Products() {
                 <option value="rating_desc">Top Rated</option>
                 <option value="name_asc">Name: A–Z</option>
               </select>
-              <div className="flex items-center justify-between gap-2 md:justify-end">
+
+              <div ref={filtersRef} className="relative">
                 <button
                   type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-emberDark disabled:opacity-50"
+                  aria-expanded={filtersOpen}
+                  aria-controls="product-filters"
+                  onClick={() => setFiltersOpen((v) => !v)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-gold/50 md:w-auto"
                 >
-                  Prev
+                  Filter
+                  {activeFilterCount > 0 ? (
+                    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-ember px-2 py-0.5 text-[10px] font-semibold text-white">
+                      {activeFilterCount}
+                    </span>
+                  ) : null}
+                  <span className="text-xs font-semibold text-muted">{filtersOpen ? 'Close' : 'Open'}</span>
                 </button>
-                <p className="text-xs font-semibold text-muted">
-                  Page {page} / {pages}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(pages, p + 1))}
-                  disabled={page >= pages}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-emberDark disabled:opacity-50"
-                >
-                  Next
-                </button>
+
+                {filtersOpen ? (
+                  <div
+                    id="product-filters"
+                    className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-full min-w-[300px] rounded-3xl border border-slate-200/80 bg-white p-5 shadow-[0_28px_80px_rgba(17,27,58,0.16)] md:w-[680px]"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Filter options</p>
+                        <p className="mt-2 text-sm text-muted">
+                          Select multiple purposes and fragrance families.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPage(1)
+                            setPurposes([])
+                            setFamilies([])
+                            setBestSellerOnly(false)
+                          }}
+                          disabled={purposes.length === 0 && families.length === 0 && !bestSellerOnly}
+                          className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-emberDark transition hover:border-gold/50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Clear filters
+                        </button>
+                      </div>
+                    </div>
+
+                    <label className="mt-5 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-clay/35 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-ink">Best sellers only</p>
+                        <p className="mt-1 text-xs text-muted">Show curated best seller picks.</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={bestSellerOnly}
+                        onChange={toggleBestSellers}
+                        className="h-5 w-5 accent-ember"
+                      />
+                    </label>
+
+                    <div className="mt-5 grid gap-6 lg:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Shop by purpose</p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {purposeOptions.map((t) => {
+                            const checked = purposes.includes(t.id)
+                            return (
+                              <label
+                                key={t.id}
+                                className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
+                                  checked
+                                    ? 'border-gold/40 bg-clay/35'
+                                    : 'border-slate-200 bg-white hover:border-gold/35'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => togglePurpose(t.id)}
+                                  className="mt-1 h-4 w-4 accent-ember"
+                                />
+                                <span className="text-sm font-semibold text-ink">{t.label}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Fragrance family</p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {familyOptions.map((t) => {
+                            const checked = families.includes(t.id)
+                            return (
+                              <label
+                                key={t.id}
+                                className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
+                                  checked
+                                    ? 'border-gold/40 bg-clay/35'
+                                    : 'border-slate-200 bg-white hover:border-gold/35'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleFamily(t.id)}
+                                  className="mt-1 h-4 w-4 accent-ember"
+                                />
+                                <span className="text-sm font-semibold text-ink">{t.label}</span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -270,117 +388,10 @@ function Products() {
               </div>
             ) : null}
 
-            {filtersOpen ? (
-              <div
-                id="product-filters"
-                className="rounded-3xl border border-slate-200/80 bg-clay/60 p-5"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Filter options</p>
-                    <p className="mt-2 text-sm text-muted">
-                      Select multiple purposes and fragrance families (checkboxes).
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPage(1)
-                        setPurposes([])
-                        setFamilies([])
-                        setBestSellerOnly(false)
-                      }}
-                      disabled={purposes.length === 0 && families.length === 0 && !bestSellerOnly}
-                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-emberDark transition hover:border-gold/50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Clear filters
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFiltersOpen(false)}
-                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-emberDark transition hover:border-gold/50"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-
-                <label className="mt-5 flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white px-4 py-3">
-                  <div>
-                    <p className="text-sm font-semibold text-ink">Best sellers only</p>
-                    <p className="mt-1 text-xs text-muted">Show curated best seller picks.</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={bestSellerOnly}
-                    onChange={toggleBestSellers}
-                    className="h-5 w-5 accent-ember"
-                  />
-                </label>
-
-                <div className="mt-5 grid gap-6 lg:grid-cols-2">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Shop by purpose</p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {purposeOptions.map((t) => {
-                        const checked = purposes.includes(t.id)
-                        return (
-                          <label
-                            key={t.id}
-                            className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
-                              checked
-                                ? 'border-gold/40 bg-white'
-                                : 'border-slate-200 bg-white hover:border-gold/35'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => togglePurpose(t.id)}
-                              className="mt-1 h-4 w-4 accent-ember"
-                            />
-                            <span className="text-sm font-semibold text-ink">{t.label}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.32em] text-muted">Fragrance family</p>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                      {familyOptions.map((t) => {
-                        const checked = families.includes(t.id)
-                        return (
-                          <label
-                            key={t.id}
-                            className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
-                              checked
-                                ? 'border-gold/40 bg-white'
-                                : 'border-slate-200 bg-white hover:border-gold/35'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleFamily(t.id)}
-                              className="mt-1 h-4 w-4 accent-ember"
-                            />
-                            <span className="text-sm font-semibold text-ink">{t.label}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
 
           {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
-          <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))] xl:[grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">
             {products.map((product) => (
               <ProductCard
                 key={product._id}
@@ -425,6 +436,28 @@ function Products() {
                 )}
               </div>
             )}
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-emberDark transition hover:border-gold/50 disabled:opacity-50"
+            >
+              Prev
+            </button>
+            <p className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-muted">
+              Page {page} / {pages}
+            </p>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(pages, p + 1))}
+              disabled={page >= pages}
+              className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-emberDark transition hover:border-gold/50 disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
 
           <div className="mt-16 rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm md:p-8">

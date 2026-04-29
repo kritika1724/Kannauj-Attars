@@ -115,7 +115,7 @@ function CollectionCatalog({
           {loading ? (
             <div className="rounded-3xl border border-slate-200/80 bg-white p-6 text-sm text-muted">Loading collection…</div>
           ) : products.length ? (
-            <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))] xl:[grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 xl:grid-cols-4">
               {products.map((product) => (
                 <ProductCard
                   key={product._id}

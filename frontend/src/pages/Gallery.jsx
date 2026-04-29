@@ -577,7 +577,7 @@ function Gallery() {
       <footer className="px-6 text-white bg-midnight py-14">
         <div className="w-full max-w-6xl mx-auto">
           <h2 className="text-2xl font-display">{BUSINESS.displayName}</h2>
-          <p className="mt-2 text-sm text-white/75">Add photos anytime — we’ll keep it polished and fast.</p>
+          {/* <p className="mt-2 text-sm text-white/75"></p> */}
         </div>
       </footer>
     </div>
