@@ -7,7 +7,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { openRazorpayCheckout } from '../../utils/razorpay'
 import { saveLastOrder } from '../../utils/orderStorage'
 import { BUSINESS } from '../../config/business'
-import { getCartTotals, isWelcomeCouponActive, WELCOME_COUPON_CODE } from '../../utils/cartOffers'
+import {
+  getCartTotals,
+  isWelcomeCouponActive,
+  PREPAID_DISCOUNT_PERCENT,
+  WELCOME_COUPON_CODE,
+} from '../../utils/cartOffers'
 
 const getRazorpayFailureMessage = (error) =>
   error?.description || error?.reason || error?.step || error?.source || 'Payment failed. Please try again.'
@@ -51,7 +56,13 @@ function PlaceOrder() {
   const itemsPrice = useMemo(() => items.reduce((sum, item) => sum + item.qty * item.price, 0), [items])
   const shippingPrice = 0
   const taxPrice = 0
-  const { discountAmount, totalPrice } = getCartTotals({ itemsPrice, shippingPrice, taxPrice, coupon })
+  const { discountAmount, prepaidDiscountAmount, totalPrice } = getCartTotals({
+    itemsPrice,
+    shippingPrice,
+    taxPrice,
+    coupon,
+    paymentMethod,
+  })
   const rewardActive = isWelcomeCouponActive(coupon)
   const normalizedShippingAddress = normalizeShippingAddress(shippingAddress)
   const missingShippingFields = getMissingShippingFields(normalizedShippingAddress)
@@ -248,6 +259,12 @@ function PlaceOrder() {
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Discount ({WELCOME_COUPON_CODE})</span>
                   <span className="font-semibold text-[#1F7A45]">-₹{discountAmount}</span>
+                </div>
+              ) : null}
+              {prepaidDiscountAmount > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted">Prepaid discount ({PREPAID_DISCOUNT_PERCENT}%)</span>
+                  <span className="font-semibold text-[#1F7A45]">-₹{prepaidDiscountAmount}</span>
                 </div>
               ) : null}
               <div className="mt-2 flex items-center justify-between border-t border-slate-200/80 pt-3">

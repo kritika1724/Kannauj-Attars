@@ -5,11 +5,11 @@ const Product = require('../models/Product')
 const { protect, optionalProtect, adminOnly } = require('../middleware/auth')
 const asyncHandler = require('../utils/asyncHandler')
 const { orderCreateLimiter, orderTrackLimiter, orderMutationLimiter } = require('../utils/rateLimit')
-const { getWelcomeDiscount } = require('../config/cartOffers')
+const { getPrepaidDiscount, getWelcomeDiscount } = require('../config/cartOffers')
 
 const router = express.Router()
 const TRACK_ORDER_SELECT =
-  'publicOrderId status createdAt updatedAt paymentMethod isPaid paidAt totalPrice itemsPrice shippingPrice taxPrice discountCode discountPercent discountAmount orderItems shippingAddress.fullName shippingAddress.phone shippingAddress.whatsapp shippingAddress.email shippingAddress.city shippingAddress.state shippingAddress.postalCode shippingAddress.country'
+  'publicOrderId status createdAt updatedAt paymentMethod isPaid paidAt totalPrice itemsPrice shippingPrice taxPrice discountCode discountPercent discountAmount prepaidDiscountCode prepaidDiscountPercent prepaidDiscountAmount orderItems shippingAddress.fullName shippingAddress.phone shippingAddress.whatsapp shippingAddress.email shippingAddress.city shippingAddress.state shippingAddress.postalCode shippingAddress.country'
 const RAZORPAY_METHODS = ['RAZORPAY', 'Razorpay', 'razorpay']
 
 const placedOrderQuery = (extra = {}) => ({
@@ -199,17 +199,19 @@ router.post(
       return res.status(400).json({ message: e.message || 'Invalid order items' })
     }
 
+    const method = String(paymentMethod || 'COD').trim().toUpperCase()
+    if (!['COD', 'RAZORPAY'].includes(method)) {
+      return res.status(400).json({ message: 'Invalid payment method' })
+    }
+
     const itemsPrice = normalizedItems.reduce((sum, item) => sum + item.qty * item.price, 0)
     const shippingPrice = 0
     const taxPrice = 0
     const subtotal = itemsPrice + shippingPrice + taxPrice
     const { discountCode, discountPercent, discountAmount } = getWelcomeDiscount(couponCode, subtotal)
-    const totalPrice = Math.max(0, subtotal - discountAmount)
-
-    const method = String(paymentMethod || 'COD').trim().toUpperCase()
-    if (!['COD', 'RAZORPAY'].includes(method)) {
-      return res.status(400).json({ message: 'Invalid payment method' })
-    }
+    const { prepaidDiscountCode, prepaidDiscountPercent, prepaidDiscountAmount } = getPrepaidDiscount(method, subtotal)
+    const totalDiscountAmount = discountAmount + prepaidDiscountAmount
+    const totalPrice = Math.max(0, subtotal - totalDiscountAmount)
 
     const COD_LIMIT = Number(process.env.COD_LIMIT || 2000)
     if (method === 'COD' && Number.isFinite(COD_LIMIT) && totalPrice > COD_LIMIT) {
@@ -237,6 +239,9 @@ router.post(
               discountCode,
               discountPercent,
               discountAmount,
+              prepaidDiscountCode,
+              prepaidDiscountPercent,
+              prepaidDiscountAmount,
               totalPrice,
               status: isRazorpayOrder ? 'payment_pending' : 'pending',
             },

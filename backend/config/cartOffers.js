@@ -1,5 +1,7 @@
 const WELCOME_COUPON_CODE = String(process.env.WELCOME_COUPON_CODE || 'WELCOME5').trim().toUpperCase()
 const WELCOME_COUPON_PERCENT = Math.max(0, Number(process.env.WELCOME_COUPON_PERCENT || 5))
+const PREPAID_DISCOUNT_CODE = String(process.env.PREPAID_DISCOUNT_CODE || 'PREPAID5').trim().toUpperCase()
+const PREPAID_DISCOUNT_PERCENT = Math.max(0, Number(process.env.PREPAID_DISCOUNT_PERCENT || 5))
 
 const roundCurrency = (value) => Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100
 
@@ -22,8 +24,30 @@ const getWelcomeDiscount = (couponCode, subtotal) => {
   }
 }
 
+const getPrepaidDiscount = (paymentMethod, subtotal) => {
+  const method = String(paymentMethod || '').trim().toUpperCase()
+  const normalizedSubtotal = Math.max(0, Number(subtotal || 0))
+
+  if (method !== 'RAZORPAY' || PREPAID_DISCOUNT_PERCENT <= 0) {
+    return {
+      prepaidDiscountCode: '',
+      prepaidDiscountPercent: 0,
+      prepaidDiscountAmount: 0,
+    }
+  }
+
+  return {
+    prepaidDiscountCode: PREPAID_DISCOUNT_CODE,
+    prepaidDiscountPercent: PREPAID_DISCOUNT_PERCENT,
+    prepaidDiscountAmount: roundCurrency((normalizedSubtotal * PREPAID_DISCOUNT_PERCENT) / 100),
+  }
+}
+
 module.exports = {
   WELCOME_COUPON_CODE,
   WELCOME_COUPON_PERCENT,
+  PREPAID_DISCOUNT_CODE,
+  PREPAID_DISCOUNT_PERCENT,
   getWelcomeDiscount,
+  getPrepaidDiscount,
 }

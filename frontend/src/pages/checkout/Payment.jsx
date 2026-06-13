@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { savePaymentMethod } from '../../features/cartSlice'
-import { getCartTotals, isWelcomeCouponActive, WELCOME_COUPON_CODE } from '../../utils/cartOffers'
+import {
+  getCartTotals,
+  isWelcomeCouponActive,
+  PREPAID_DISCOUNT_PERCENT,
+  WELCOME_COUPON_CODE,
+} from '../../utils/cartOffers'
 
 function Payment() {
   const navigate = useNavigate()
@@ -11,11 +16,13 @@ function Payment() {
 
   const COD_LIMIT = 2000
   const itemsPrice = useMemo(() => items.reduce((sum, item) => sum + item.qty * item.price, 0), [items])
-  const { discountAmount, totalPrice } = getCartTotals({ itemsPrice, coupon })
+  const codTotals = getCartTotals({ itemsPrice, coupon, paymentMethod: 'COD' })
+  const prepaidTotals = getCartTotals({ itemsPrice, coupon, paymentMethod: 'RAZORPAY' })
   const rewardActive = isWelcomeCouponActive(coupon)
-  const codAllowed = totalPrice <= COD_LIMIT
+  const codAllowed = codTotals.totalPrice <= COD_LIMIT
 
   const [selected, setSelected] = useState(paymentMethod || 'COD')
+  const selectedTotals = selected === 'RAZORPAY' ? prepaidTotals : codTotals
 
   useEffect(() => {
     if (!codAllowed) setSelected('RAZORPAY')
@@ -33,7 +40,7 @@ function Payment() {
           <p className="text-xs uppercase tracking-[0.35em] text-muted">Checkout</p>
           <h1 className="mt-4 font-display text-4xl text-ink md:text-5xl">Payment</h1>
           <p className="mt-3 text-sm text-muted">
-            Choose your payment method. COD is available only up to ₹{COD_LIMIT}.
+            Choose your payment method. Select prepaid payment to get an extra {PREPAID_DISCOUNT_PERCENT}% discount.
           </p>
         </div>
       </header>
@@ -41,7 +48,13 @@ function Payment() {
       <section className="px-6 pb-16">
         <div className="mx-auto w-full max-w-4xl rounded-3xl border border-slate-200/80 bg-white p-8 shadow-lg shadow-black/10">
           <div className="grid gap-4">
-            <div className={`rounded-2xl border border-gold/25 p-5 ${codAllowed ? 'bg-clay/60' : 'bg-slate-50 opacity-70'}`}>
+            <div className={`rounded-2xl border p-5 ${
+              selected === 'COD'
+                ? 'border-gold/45 bg-clay/70'
+                : codAllowed
+                  ? 'border-slate-200 bg-white'
+                  : 'border-slate-200 bg-slate-50 opacity-70'
+            }`}>
               <label className="flex items-start gap-3">
                 <input
                   type="radio"
@@ -53,18 +66,27 @@ function Payment() {
                   className="mt-1"
                 />
                 <div>
-                  <p className="text-sm font-semibold text-ink">Cash on Delivery (COD)</p>
-                  <p className="text-xs text-muted">Pay when your order is delivered.</p>
+                  <p className="text-sm font-semibold text-ink">Payment at Delivery (COD)</p>
+                  <p className="text-xs text-muted">Pay when your order is delivered. No prepaid discount applies.</p>
+                  <p className="mt-2 text-xs font-semibold text-ink">Payable: ₹{codTotals.totalPrice}</p>
                   {!codAllowed ? (
                     <p className="mt-2 text-xs font-semibold text-red-600">
                       COD not available for orders above ₹{COD_LIMIT}. Please choose online payment.
+                    </p>
+                  ) : prepaidTotals.prepaidDiscountAmount > 0 ? (
+                    <p className="mt-2 text-xs font-semibold text-[#1F7A45]">
+                      Choose prepaid payment and save ₹{prepaidTotals.prepaidDiscountAmount}.
                     </p>
                   ) : null}
                 </div>
               </label>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className={`rounded-2xl border p-5 ${
+              selected === 'RAZORPAY'
+                ? 'border-[#1F7A45]/40 bg-emerald-50/70'
+                : 'border-[#1F7A45]/20 bg-white'
+            }`}>
               <label className="flex items-start gap-3">
                 <input
                   type="radio"
@@ -75,8 +97,12 @@ function Payment() {
                   className="mt-1"
                 />
                 <div>
-                  <p className="text-sm font-semibold text-ink">Online Payment</p>
+                  <p className="text-sm font-semibold text-ink">Prepaid Payment</p>
                   <p className="text-xs text-muted">UPI / Card / Netbanking (Razorpay)</p>
+                  <p className="mt-2 text-xs font-semibold text-[#1F7A45]">
+                    Extra {PREPAID_DISCOUNT_PERCENT}% prepaid discount: -₹{prepaidTotals.prepaidDiscountAmount}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-ink">Payable: ₹{prepaidTotals.totalPrice}</p>
                   <p className="mt-2 text-[11px] text-muted">
                     You will be redirected to Razorpay secure checkout.
                   </p>
@@ -89,18 +115,31 @@ function Payment() {
             <span className="text-muted">Cart total</span>
             <span className="font-semibold text-ink">₹{itemsPrice}</span>
           </div>
-          {rewardActive ? (
+          {rewardActive || selectedTotals.prepaidDiscountAmount > 0 ? (
             <div className="mt-4 rounded-2xl border border-gold/25 bg-[rgba(201,162,74,0.08)] px-5 py-4 text-sm">
+              {rewardActive ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-ink">Coupon applied: {WELCOME_COUPON_CODE}</span>
+                  <span className="font-semibold text-[#1F7A45]">-₹{selectedTotals.discountAmount}</span>
+                </div>
+              ) : null}
+              {selectedTotals.prepaidDiscountAmount > 0 ? (
+                <div className={`${rewardActive ? 'mt-2' : ''} flex items-center justify-between gap-3`}>
+                  <span className="font-semibold text-ink">Prepaid payment discount</span>
+                  <span className="font-semibold text-[#1F7A45]">-₹{selectedTotals.prepaidDiscountAmount}</span>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between gap-3">
-                <span className="font-semibold text-ink">Coupon applied: {WELCOME_COUPON_CODE}</span>
-                <span className="font-semibold text-[#1F7A45]">-₹{discountAmount}</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between">
                 <span className="text-muted">Payable total</span>
-                <span className="font-semibold text-ink">₹{totalPrice}</span>
+                <span className="font-semibold text-ink">₹{selectedTotals.totalPrice}</span>
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-sm">
+              <span className="text-muted">Payable total</span>
+              <span className="font-semibold text-ink">₹{selectedTotals.totalPrice}</span>
+            </div>
+          )}
 
           <button
             onClick={onContinue}
