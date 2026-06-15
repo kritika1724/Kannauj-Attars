@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { FiCheck, FiChevronDown, FiFilter, FiX } from 'react-icons/fi'
 import { useTaxonomy } from '../components/TaxonomyProvider'
+import { api } from '../services/api'
 import {
   buildChoiceList,
   buildIdSet,
@@ -96,6 +97,7 @@ function ProductFilters() {
   const [selectedGenders, setSelectedGenders] = useState([])
   const [selectedOccasions, setSelectedOccasions] = useState([])
   const [bestSellerOnly, setBestSellerOnly] = useState(false)
+  const [facetProducts, setFacetProducts] = useState([])
 
   const [openSections, setOpenSections] = useState({
     popular: true,
@@ -109,9 +111,37 @@ function ProductFilters() {
   })
 
   const categories = useMemo(
-    () => [...new Set([...CATEGORY_DEFAULTS, String(selectedCategory || '').trim()].filter(Boolean))],
-    [selectedCategory]
+    () =>
+      [
+        ...new Set(
+          [
+            ...CATEGORY_DEFAULTS,
+            String(selectedCategory || '').trim(),
+            ...facetProducts.map((item) => String(item?.category || '').trim()),
+          ].filter(Boolean)
+        ),
+      ],
+    [facetProducts, selectedCategory]
   )
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadFacetProducts = async () => {
+      try {
+        const data = await api.getProducts({ page: 1, limit: 100, sort: 'latest' })
+        if (cancelled) return
+        setFacetProducts(Array.isArray(data) ? data : data.products || [])
+      } catch {
+        if (!cancelled) setFacetProducts([])
+      }
+    }
+
+    loadFacetProducts()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (taxonomyLoading) return
